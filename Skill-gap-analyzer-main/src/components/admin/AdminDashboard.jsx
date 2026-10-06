@@ -1,294 +1,124 @@
 /**
- * Admin Dashboard - Sleek Black & Grey Theme with Images
+ * Admin Dashboard — campus-wide readiness analytics for placement cells.
  */
 
-import { useState, useEffect } from 'react';
-import { useAuth } from '../../context/AuthContext';
+import { useCallback, useEffect, useState } from 'react';
+import { RefreshCw, Users, TrendingUp, Target, AlertTriangle, BarChart3 } from 'lucide-react';
 import { getCampusAnalytics } from '../../services/firestoreService';
-import { 
-  LogOut, 
-  Users, 
-  TrendingUp, 
-  AlertTriangle,
-  RefreshCw,
-  Target,
-  Sparkles,
-  BarChart3
-} from 'lucide-react';
+import PageHeader from '../ui/PageHeader';
+import Card, { CardHeader, CardBody } from '../ui/Card';
+import Button from '../ui/Button';
+import Stat from '../ui/Stat';
+import ProgressBar from '../ui/ProgressBar';
+import { EmptyState, ErrorState } from '../ui/States';
+import { Skeleton } from '../ui/Spinner';
+
+const scoreTone = (score) => (score >= 70 ? 'success' : score >= 50 ? 'warning' : 'danger');
 
 const AdminDashboard = () => {
-  const { userProfile, logout } = useAuth();
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  useEffect(() => {
-    fetchAnalytics();
-  }, []);
-
-  const fetchAnalytics = async () => {
+  const fetchAnalytics = useCallback(async () => {
     setLoading(true);
+    setError('');
     try {
-      const data = await getCampusAnalytics();
-      setAnalytics(data);
-    } catch (error) {
-      console.error('Error fetching analytics:', error);
+      setAnalytics(await getCampusAnalytics());
+    } catch (err) {
+      console.error('Error fetching analytics:', err);
+      setError(err?.code === 'permission-denied' ? 'Your account doesn’t have permission to view campus analytics.' : 'Check your connection and try again.');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const getScoreColor = (score) => {
-    if (score >= 70) return 'text-emerald-500';
-    if (score >= 50) return 'text-amber-500';
-    return 'text-red-500';
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-zinc-50 flex items-center justify-center">
-        <div className="text-center">
-          <RefreshCw className="w-8 h-8 animate-spin text-zinc-400 mx-auto mb-3" />
-          <p className="text-zinc-600 font-medium">Loading analytics...</p>
-        </div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    fetchAnalytics();
+  }, [fetchAnalytics]);
 
   return (
-    <div className="min-h-screen bg-zinc-50">
-      {/* Header */}
-      <header className="bg-white/90 backdrop-blur-md border-b border-zinc-100 sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-zinc-900 rounded-xl flex items-center justify-center">
-              <Sparkles className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <span className="font-bold text-zinc-900 text-lg">SkillGap</span>
-              <span className="text-xs text-zinc-500 ml-2 bg-zinc-100 px-2 py-0.5 rounded-full">Admin</span>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-4">
-            <button
-              onClick={fetchAnalytics}
-              className="p-2 text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded-xl transition-colors"
-              title="Refresh"
-            >
-              <RefreshCw className="w-5 h-5" />
-            </button>
-            <div className="text-right hidden sm:block">
-              <p className="text-sm font-semibold text-zinc-900">{userProfile?.name}</p>
-              <p className="text-xs text-zinc-500">Placement Cell</p>
-            </div>
-            <button
-              onClick={logout}
-              className="p-2 text-zinc-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors"
-            >
-              <LogOut className="w-5 h-5" />
-            </button>
-          </div>
+    <div>
+      <PageHeader
+        eyebrow="Placement cell"
+        title="Campus analytics"
+        description="Readiness across students, based on each student’s most recent analysis."
+        actions={
+          <Button variant="secondary" icon={RefreshCw} onClick={fetchAnalytics} loading={loading}>
+            Refresh
+          </Button>
+        }
+      />
+
+      {loading && !analytics ? (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {[0, 1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-28" />
+          ))}
         </div>
-      </header>
-
-      <main className="max-w-6xl mx-auto px-6 py-8">
-        {/* Title */}
-        <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-black text-zinc-900 mb-2">Campus Analytics 📊</h1>
-            <p className="text-zinc-600 text-lg">Overview of student placement readiness</p>
-          </div>
-          <img 
-            src="https://images.unsplash.com/photo-1552664730-d307ca884978?w=120&h=80&fit=crop" 
-            alt="" 
-            className="w-24 h-16 rounded-xl object-cover hidden md:block"
-          />
-        </div>
-
-        {/* Stats Grid */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white rounded-2xl p-6 shadow-lg border border-zinc-100">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                <Users className="w-6 h-6 text-blue-600" />
-              </div>
-            </div>
-            <p className="text-4xl font-black text-zinc-900">{analytics?.totalStudents || 0}</p>
-            <p className="text-zinc-500 font-medium mt-1">Students analyzed</p>
+      ) : error ? (
+        <Card>
+          <ErrorState title="Couldn’t load campus analytics" description={error} onRetry={fetchAnalytics} />
+        </Card>
+      ) : analytics.totalStudents === 0 ? (
+        <Card>
+          <EmptyState icon={BarChart3} title="No analyses yet" description="Once students complete a skill analysis, campus insights will appear here." />
+        </Card>
+      ) : (
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Stat label="Students analysed" icon={Users} value={analytics.totalStudents} hint={`${analytics.totalAnalyses} analyses in total`} />
+            <Stat label="Average readiness" icon={TrendingUp} value={analytics.averageReadiness} unit="%">
+              <ProgressBar value={analytics.averageReadiness} size="sm" tone={scoreTone(analytics.averageReadiness)} className="mt-3" label="Average readiness" />
+            </Stat>
+            <Stat label="Career paths" icon={Target} value={analytics.roleWiseStats.length} hint="chosen by students" />
+            <Stat label="Top skill gap" icon={AlertTriangle} value={analytics.topMissingSkills[0]?.skill || '—'} hint={analytics.topMissingSkills[0] ? `${analytics.topMissingSkills[0].count} students` : undefined} />
           </div>
 
-          <div className="bg-white rounded-2xl p-6 shadow-lg border border-zinc-100">
-            <div className="flex items-center justify-between mb-4">
-              <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                (analytics?.averageReadiness || 0) >= 60 ? 'bg-emerald-100' : 'bg-amber-100'
-              }`}>
-                <TrendingUp className={`w-6 h-6 ${
-                  (analytics?.averageReadiness || 0) >= 60 ? 'text-emerald-600' : 'text-amber-600'
-                }`} />
-              </div>
-            </div>
-            <p className={`text-4xl font-black ${getScoreColor(analytics?.averageReadiness || 0)}`}>
-              {analytics?.averageReadiness || 0}%
-            </p>
-            <p className="text-zinc-500 font-medium mt-1">Average readiness</p>
-          </div>
-
-          <div className="bg-white rounded-2xl p-6 shadow-lg border border-zinc-100">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-                <Target className="w-6 h-6 text-purple-600" />
-              </div>
-            </div>
-            <p className="text-4xl font-black text-zinc-900">{analytics?.roleWiseStats?.length || 0}</p>
-            <p className="text-zinc-500 font-medium mt-1">Career paths</p>
-          </div>
-
-          <div className="bg-white rounded-2xl p-6 shadow-lg border border-zinc-100">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
-                <AlertTriangle className="w-6 h-6 text-red-600" />
-              </div>
-            </div>
-            <p className="text-xl font-bold text-zinc-900 truncate">
-              {analytics?.topMissingSkills?.[0]?.skill || 'N/A'}
-            </p>
-            <p className="text-zinc-500 font-medium mt-1">Top skill gap</p>
-          </div>
-        </div>
-
-        <div className="grid lg:grid-cols-2 gap-6">
-          {/* Top Missing Skills */}
-          <div className="bg-white rounded-2xl p-6 shadow-lg border border-zinc-100">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 bg-zinc-900 rounded-xl flex items-center justify-center">
-                <BarChart3 className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h2 className="font-bold text-zinc-900 text-lg">Top Missing Skills</h2>
-                <p className="text-sm text-zinc-500">Skills students need most</p>
-              </div>
-            </div>
-            
-            {analytics?.topMissingSkills?.length > 0 ? (
-              <div className="space-y-4">
-                {analytics.topMissingSkills.slice(0, 8).map((item, index) => (
-                  <div key={index} className="flex items-center gap-4">
-                    <span className="w-6 text-sm font-bold text-zinc-400">{index + 1}</span>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="font-semibold text-zinc-900">{item.skill}</span>
-                        <span className="text-sm text-zinc-500">{item.count} students</span>
+          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+            <Card>
+              <CardHeader title="Top missing skills" description="Share of students with each gap." />
+              <CardBody>
+                <ol className="space-y-3.5">
+                  {analytics.topMissingSkills.slice(0, 8).map((item, index) => (
+                    <li key={item.skill} className="flex items-center gap-3">
+                      <span className="tabular w-4 text-xs font-medium text-muted-light">{index + 1}</span>
+                      <div className="flex-1">
+                        <div className="mb-1.5 flex items-center justify-between text-sm">
+                          <span className="font-medium text-ink">{item.skill}</span>
+                          <span className="tabular text-xs text-muted">
+                            {item.count} student{item.count === 1 ? '' : 's'}
+                          </span>
+                        </div>
+                        <ProgressBar value={item.count} max={analytics.totalStudents} size="sm" tone="ink" label={`${item.skill} gap share`} />
                       </div>
-                      <div className="h-2 bg-zinc-100 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-zinc-900 rounded-full transition-all duration-500"
-                          style={{ 
-                            width: `${Math.min(100, (item.count / (analytics.totalStudents || 1)) * 100)}%` 
-                          }}
-                        ></div>
+                    </li>
+                  ))}
+                </ol>
+              </CardBody>
+            </Card>
+
+            <Card>
+              <CardHeader title="Readiness by role" description="Average readiness per career path." />
+              <CardBody>
+                <ul className="space-y-3.5">
+                  {analytics.roleWiseStats.map((item) => (
+                    <li key={item.role}>
+                      <div className="mb-1.5 flex items-center justify-between text-sm">
+                        <span className="font-medium text-ink">{item.role}</span>
+                        <span className="tabular text-xs text-muted">
+                          <span className="font-semibold text-ink">{item.averageScore}%</span> · {item.studentCount} student{item.studentCount === 1 ? '' : 's'}
+                        </span>
                       </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-zinc-500">
-                <BarChart3 className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                <p className="font-medium">No data available</p>
-              </div>
-            )}
+                      <ProgressBar value={item.averageScore} size="sm" tone={scoreTone(item.averageScore)} label={`${item.role} readiness`} />
+                    </li>
+                  ))}
+                </ul>
+              </CardBody>
+            </Card>
           </div>
-
-          {/* Role-wise Readiness */}
-          <div className="bg-white rounded-2xl p-6 shadow-lg border border-zinc-100">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 bg-zinc-900 rounded-xl flex items-center justify-center">
-                <Target className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h2 className="font-bold text-zinc-900 text-lg">Readiness by Role</h2>
-                <p className="text-sm text-zinc-500">Career-wise breakdown</p>
-              </div>
-            </div>
-            
-            {analytics?.roleWiseStats?.length > 0 ? (
-              <div className="space-y-4">
-                {analytics.roleWiseStats.map((item, index) => (
-                  <div key={index} className="p-4 bg-zinc-50 rounded-xl border border-zinc-100">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-bold text-zinc-900">{item.role}</span>
-                      <span className={`text-xl font-black ${getScoreColor(item.averageScore)}`}>
-                        {item.averageScore}%
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-xs text-zinc-500 mb-2">
-                      <span>{item.studentCount} students</span>
-                    </div>
-                    <div className="h-2 bg-zinc-200 rounded-full overflow-hidden">
-                      <div 
-                        className={`h-full rounded-full transition-all duration-500 ${
-                          item.averageScore >= 70 ? 'bg-emerald-500' : 
-                          item.averageScore >= 50 ? 'bg-amber-500' : 'bg-red-500'
-                        }`}
-                        style={{ width: `${item.averageScore}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-zinc-500">
-                <Target className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                <p className="font-medium">No data available</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Insights */}
-        {analytics?.totalStudents > 0 && (
-          <div className="mt-6 bg-zinc-900 rounded-2xl p-6 text-white">
-            <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
-              <Sparkles className="w-5 h-5" />
-              Key Insights
-            </h3>
-            <div className="grid sm:grid-cols-2 gap-4 text-sm">
-              <div className="flex items-start gap-3">
-                <div className="w-2 h-2 rounded-full bg-white mt-2"></div>
-                <p className="text-zinc-300">
-                  <span className="text-white font-bold">{analytics.totalStudents}</span> students 
-                  have completed skill analysis
-                </p>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-2 h-2 rounded-full bg-white mt-2"></div>
-                <p className="text-zinc-300">
-                  Average readiness is <span className="text-white font-bold">{analytics.averageReadiness}%</span>
-                  {analytics.averageReadiness >= 60 ? ' — Good progress!' : ' — Room for improvement'}
-                </p>
-              </div>
-              {analytics.topMissingSkills?.[0] && (
-                <div className="flex items-start gap-3">
-                  <div className="w-2 h-2 rounded-full bg-white mt-2"></div>
-                  <p className="text-zinc-300">
-                    <span className="text-white font-bold">{analytics.topMissingSkills[0].skill}</span> is 
-                    the most common skill gap
-                  </p>
-                </div>
-              )}
-              {analytics.roleWiseStats?.[0] && (
-                <div className="flex items-start gap-3">
-                  <div className="w-2 h-2 rounded-full bg-white mt-2"></div>
-                  <p className="text-zinc-300">
-                    <span className="text-white font-bold">{analytics.roleWiseStats[0].role}</span> is 
-                    the most popular career choice
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </main>
+        </>
+      )}
     </div>
   );
 };

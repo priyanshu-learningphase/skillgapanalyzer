@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "skillgap-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "Skill-gap-analyzer-main", "run", "dev"],
+      "port": 3000
+    }
+  ]
+}

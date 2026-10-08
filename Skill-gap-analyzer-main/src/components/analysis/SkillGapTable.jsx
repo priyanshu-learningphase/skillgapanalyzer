@@ -5,7 +5,8 @@ import ProgressBar from '../ui/ProgressBar';
 import Segmented from '../ui/Segmented';
 import Button from '../ui/Button';
 import { EmptyState } from '../ui/States';
-import { PRIORITY_META, isIncludedInRoadmap, suggestedAction } from '../../lib/analysis';
+import { PRIORITY_META, isIncludedInRoadmap, suggestedAction, levelName } from '../../lib/analysis';
+import { StandingBadge } from '../ui/PriorityBadge';
 import { cx } from '../../lib/cx';
 
 const priorityRank = (item) => (item.priority ? PRIORITY_META[item.priority].rank : 9);
@@ -163,15 +164,19 @@ const SkillGapTable = ({ items, overrides, onToggle, onEditLevel }) => {
                           {item.category}
                           {item.inferred && ` · inferred from ${item.inferredFrom}`}
                         </span>
+                        <StandingBadge standing={item.standing} className="mt-1" />
                       </button>
                     </td>
                     <td className="px-3 py-3">
-                      <div className="flex items-center gap-2.5">
-                        <ProgressBar value={item.current} marker={item.required} size="sm" className="w-24" tone={item.gap === 0 ? 'success' : 'accent'} label={`${item.skillName} level`} />
-                        <span className="tabular w-9 text-xs text-ink">{item.current}%</span>
-                      </div>
+                      <p className="whitespace-nowrap text-xs">
+                        <span className="tabular font-medium text-ink">{item.current}%</span> <span className="text-muted">{levelName(item.current)}</span>
+                      </p>
+                      <ProgressBar value={item.current} marker={item.required} size="sm" className="mt-1.5 w-24" tone={item.gap === 0 ? 'success' : 'accent'} label={`${item.skillName} level`} />
                     </td>
-                    <td className="tabular px-3 py-3 text-ink">{item.required}%</td>
+                    <td className="whitespace-nowrap px-3 py-3 text-xs">
+                      <span className="tabular block font-medium text-ink">{item.required}%</span>
+                      <span className="block text-muted">{levelName(item.required)}</span>
+                    </td>
                     <td className="tabular px-3 py-3">
                       <span className={item.gap ? 'font-medium text-ink' : 'text-muted'}>{item.gap ? `${item.gap}%` : '—'}</span>
                     </td>

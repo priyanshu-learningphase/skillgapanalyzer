@@ -12,10 +12,22 @@ export const emptyProgress = () => ({
   skillHistory: [],
   activity: [],
   lastSeenActivityAt: null,
+  assessments: [],
+  projects: {},
+  interview: { practiced: {} },
+  weekChecks: {},
 });
 
 /** Accept partial/legacy documents and always return the full shape. */
-export const normalizeProgress = (raw) => ({ ...emptyProgress(), ...(raw || {}) });
+export const normalizeProgress = (raw) => {
+  const base = { ...emptyProgress(), ...(raw || {}) };
+  base.interview = { practiced: {}, ...(base.interview || {}) };
+  return base;
+};
+
+export const emptyInsights = () => ({ resume: null, jobs: [], github: null });
+
+export const normalizeInsights = (raw) => ({ ...emptyInsights(), ...(raw || {}) });
 
 export const dayKey = (date = new Date()) => {
   const d = new Date(date);

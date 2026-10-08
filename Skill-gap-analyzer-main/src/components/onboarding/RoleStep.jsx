@@ -1,17 +1,14 @@
-import { useState } from 'react';
 import { X } from 'lucide-react';
 import OptionCard from './OptionCard';
 import SkillPicker from './SkillPicker';
-import { FEATURED_ROLE_IDS, ROLES, ROLE_MAP } from '../../data/roles';
+import { FEATURED_ROLE_IDS, ROLE_MAP } from '../../data/roles';
+import CompanyPicker from '../careers/CompanyPicker';
 import { roleIcon } from '../careers/roleIcons';
 
 export const CUSTOM_ROLE_MIN_SKILLS = 3;
 
 const RoleStep = ({ value, onChange }) => {
-  const [showAll, setShowAll] = useState(() => Boolean(value.targetRoleId && !FEATURED_ROLE_IDS.includes(value.targetRoleId) && value.targetRoleId !== 'custom'));
-  const featured = FEATURED_ROLE_IDS.map((id) => ROLE_MAP[id]);
-  const others = ROLES.filter((r) => !FEATURED_ROLE_IDS.includes(r.id));
-  const roles = showAll ? [...featured, ...others] : featured;
+  const roles = FEATURED_ROLE_IDS.map((id) => ROLE_MAP[id]);
   const custom = value.customRole || { name: '', skills: [] };
 
   const setCustom = (patch) => onChange({ targetRoleId: 'custom', customRole: { ...custom, ...patch } });
@@ -38,11 +35,6 @@ const RoleStep = ({ value, onChange }) => {
         />
       </div>
 
-      {!showAll && (
-        <button type="button" onClick={() => setShowAll(true)} className="mt-4 text-sm font-medium text-muted hover:text-ink">
-          Show {others.length} more roles — {others.map((r) => r.name).join(', ')}
-        </button>
-      )}
 
       {value.targetRoleId === 'custom' && (
         <div className="card mt-6 space-y-5 p-5 animate-fade-in">
@@ -89,6 +81,14 @@ const RoleStep = ({ value, onChange }) => {
           </div>
         </div>
       )}
+
+      <div className="card mt-6 p-5">
+        <p className="text-sm font-semibold text-ink">
+          Target company <span className="font-normal text-muted">(optional)</span>
+        </p>
+        <p className="mb-4 mt-0.5 text-sm text-muted">Some companies raise the bar on specific skills. We’ll adjust your targets.</p>
+        <CompanyPicker value={value.targetCompany || null} onChange={(targetCompany) => onChange({ targetCompany })} />
+      </div>
     </div>
   );
 };

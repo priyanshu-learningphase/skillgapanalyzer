@@ -44,8 +44,8 @@ const ProfileMenu = () => {
               )}
             </p>
           </div>
-          <Link to="/settings" onClick={close} className="flex items-center gap-2 px-3.5 py-2 text-sm text-ink hover:bg-slate-50">
-            <Settings className="h-4 w-4 text-muted" aria-hidden /> Settings
+          <Link to="/profile" onClick={close} className="flex items-center gap-2 px-3.5 py-2 text-sm text-ink hover:bg-slate-50">
+            <Settings className="h-4 w-4 text-muted" aria-hidden /> Profile &amp; settings
           </Link>
           {!isLocalMode && (
             <button

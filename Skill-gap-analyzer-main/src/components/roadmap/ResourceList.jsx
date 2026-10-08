@@ -1,8 +1,10 @@
-import { FileText, PlayCircle, GraduationCap, BookOpen, Dumbbell, Hammer, ExternalLink, Search } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { FileText, PlayCircle, GraduationCap, BookOpen, BookMarked, Dumbbell, Hammer, ExternalLink, Search } from 'lucide-react';
 
 export const RESOURCE_META = {
   docs: { label: 'Documentation', icon: FileText, group: 'learn' },
-  video: { label: 'Video', icon: PlayCircle, group: 'learn' },
+  video: { label: 'YouTube', icon: PlayCircle, group: 'learn' },
+  book: { label: 'Book', icon: BookMarked, group: 'learn' },
   course: { label: 'Course', icon: GraduationCap, group: 'learn' },
   article: { label: 'Article', icon: BookOpen, group: 'learn' },
   practice: { label: 'Practice', icon: Dumbbell, group: 'practice' },
@@ -65,6 +67,11 @@ const ResourceList = ({ resources = [], practice, project }) => {
             <div className="rounded-lg bg-slate-50 px-3 py-2.5">
               <p className="text-sm font-medium text-ink">{project.title}</p>
               {project.description && <p className="mt-0.5 text-sm text-muted">{project.description}</p>}
+              {project.id && (
+                <Link to={`/projects/${project.id}`} className="mt-2 inline-block text-xs font-medium text-accent-600 hover:text-accent-700">
+                  View project brief →
+                </Link>
+              )}
             </div>
           )}
           <div className="mt-2 space-y-2">

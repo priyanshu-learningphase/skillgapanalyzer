@@ -26,6 +26,7 @@ export const SKILL_CATEGORIES = [
   'Data',
   'Machine Learning',
   'Mobile',
+  'Blockchain',
   'Practices',
   'Custom',
 ];
@@ -66,7 +67,7 @@ export const SKILLS = [
     practice: 'Complete 15 Learn Git Branching levels',
     project: 'Contribute a pull request to an open-source repository',
     resources: [
-      res('docs', 'Pro Git book', 'https://git-scm.com/book/en/v2'),
+      res('book', 'Pro Git', 'https://git-scm.com/book/en/v2'),
       res('practice', 'Learn Git Branching', 'https://learngitbranching.js.org/'),
       res('article', 'roadmap.sh: Git & GitHub', 'https://roadmap.sh/git-github'),
     ],
@@ -87,7 +88,8 @@ export const SKILLS = [
     resources: [
       res('course', 'Linux Journey', 'https://linuxjourney.com/'),
       res('practice', 'OverTheWire: Bandit', 'https://overthewire.org/wargames/bandit/'),
-      res('article', 'roadmap.sh: Linux', 'https://roadmap.sh/linux'),
+      res('book', 'The Linux Command Line', 'https://linuxcommand.org/tlcl.php'),
+      res('video', 'NetworkChuck', 'https://www.youtube.com/@NetworkChuck'),
     ],
     roadmapSh: 'linux',
   },
@@ -106,7 +108,7 @@ export const SKILLS = [
     resources: [
       res('article', 'Cloudflare Learning Center', 'https://www.cloudflare.com/learning/'),
       res('docs', 'MDN: An overview of HTTP', 'https://developer.mozilla.org/en-US/docs/Web/HTTP/Overview'),
-      res('docs', 'Wireshark documentation', 'https://www.wireshark.org/docs/'),
+      res('video', 'NetworkChuck', 'https://www.youtube.com/@NetworkChuck'),
     ],
   },
   {
@@ -122,7 +124,7 @@ export const SKILLS = [
     practice: 'Work through 25 exercises from Mathematics for Machine Learning',
     project: 'Implement gradient descent from scratch in NumPy',
     resources: [
-      res('docs', 'Mathematics for Machine Learning (book)', 'https://mml-book.github.io/'),
+      res('book', 'Mathematics for Machine Learning', 'https://mml-book.github.io/'),
       res('course', 'Khan Academy: Linear algebra', 'https://www.khanacademy.org/math/linear-algebra'),
       res('video', '3Blue1Brown', 'https://www.youtube.com/@3blue1brown'),
     ],
@@ -142,7 +144,7 @@ export const SKILLS = [
     resources: [
       res('course', 'Khan Academy: Statistics & probability', 'https://www.khanacademy.org/math/statistics-probability'),
       res('video', 'StatQuest', 'https://www.youtube.com/@statquest'),
-      res('docs', 'OpenIntro Statistics', 'https://www.openintro.org/book/os/'),
+      res('book', 'OpenIntro Statistics', 'https://www.openintro.org/book/os/'),
     ],
   },
 
@@ -162,7 +164,8 @@ export const SKILLS = [
     resources: [
       res('docs', 'The Python Tutorial', 'https://docs.python.org/3/tutorial/'),
       res('practice', 'Exercism: Python', 'https://exercism.org/tracks/python'),
-      res('article', 'roadmap.sh: Python', 'https://roadmap.sh/python'),
+      res('book', 'Automate the Boring Stuff with Python', 'https://automatetheboringstuff.com/'),
+      res('video', 'Corey Schafer', 'https://www.youtube.com/@coreyms'),
     ],
     roadmapSh: 'python',
   },
@@ -181,7 +184,8 @@ export const SKILLS = [
     resources: [
       res('docs', 'javascript.info', 'https://javascript.info/'),
       res('docs', 'MDN JavaScript Guide', 'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide'),
-      res('article', 'roadmap.sh: JavaScript', 'https://roadmap.sh/javascript'),
+      res('book', 'Eloquent JavaScript', 'https://eloquentjavascript.net/'),
+      res('video', 'Web Dev Simplified', 'https://www.youtube.com/@WebDevSimplified'),
     ],
     roadmapSh: 'javascript',
   },
@@ -296,6 +300,7 @@ export const SKILLS = [
       res('practice', 'NeetCode roadmap', 'https://neetcode.io/roadmap'),
       res('docs', 'GeeksforGeeks: Data structures', 'https://www.geeksforgeeks.org/data-structures/'),
       res('practice', 'LeetCode problem set', 'https://leetcode.com/problemset/'),
+      res('video', 'Abdul Bari', 'https://www.youtube.com/@abdul_bari'),
     ],
     roadmapSh: 'datastructures-and-algorithms',
   },
@@ -314,7 +319,8 @@ export const SKILLS = [
     resources: [
       res('practice', 'NeetCode 150', 'https://neetcode.io/practice'),
       res('docs', 'CP-Algorithms', 'https://cp-algorithms.com/'),
-      res('practice', 'LeetCode problem set', 'https://leetcode.com/problemset/'),
+      res('book', 'Competitive Programmer’s Handbook', 'https://cses.fi/book/book.pdf'),
+      res('video', 'NeetCode', 'https://www.youtube.com/@NeetCode'),
     ],
     roadmapSh: 'datastructures-and-algorithms',
   },
@@ -348,7 +354,7 @@ export const SKILLS = [
     practice: 'Answer 30 OS interview questions and write 3 concurrency exercises',
     project: 'Write a multithreaded producer–consumer simulation',
     resources: [
-      res('docs', 'Operating Systems: Three Easy Pieces', 'https://pages.cs.wisc.edu/~remzi/OSTEP/'),
+      res('book', 'Operating Systems: Three Easy Pieces', 'https://pages.cs.wisc.edu/~remzi/OSTEP/'),
       res('docs', 'GeeksforGeeks: Operating systems', 'https://www.geeksforgeeks.org/operating-systems/'),
     ],
   },
@@ -367,9 +373,29 @@ export const SKILLS = [
     resources: [
       res('docs', 'System Design Primer', 'https://github.com/donnemartin/system-design-primer'),
       res('video', 'ByteByteGo', 'https://www.youtube.com/@ByteByteGo'),
+      res('book', 'Designing Data-Intensive Applications', 'https://dataintensive.net/'),
       res('article', 'roadmap.sh: System design', 'https://roadmap.sh/system-design'),
     ],
     roadmapSh: 'system-design',
+  },
+
+  {
+    id: 'distributed-systems',
+    name: 'Distributed Systems',
+    category: 'CS Core',
+    aliases: ['distributed computing'],
+    prerequisites: ['system-design', 'operating-systems'],
+    hours: 45,
+    why: 'Large-scale products run across many machines; reasoning about failure, consistency and coordination is expected for senior and big-tech roles.',
+    topics: ['Partial failure and failure models', 'Replication strategies', 'Partitioning and consistent hashing', 'Consistency models', 'Consensus (Raft, Paxos)', 'Distributed transactions', 'Clocks and event ordering'],
+    advanced: ['CRDTs', 'Multi-region architecture'],
+    practice: 'Work through the MIT 6.5840 labs (MapReduce, Raft)',
+    project: 'Implement a replicated key-value store with Raft',
+    resources: [
+      res('book', 'Designing Data-Intensive Applications', 'https://dataintensive.net/'),
+      res('course', 'MIT 6.5840 Distributed Systems', 'https://pdos.csail.mit.edu/6.824/'),
+      res('article', 'Notes on Distributed Systems for Young Bloods', 'https://www.somethingsimilar.com/2013/01/14/notes-on-distributed-systems-for-young-bloods/'),
+    ],
   },
 
   // ── Frontend ─────────────────────────────────────────────────────────────
@@ -406,6 +432,7 @@ export const SKILLS = [
       res('docs', 'MDN: CSS', 'https://developer.mozilla.org/en-US/docs/Web/CSS'),
       res('course', 'web.dev: Learn CSS', 'https://web.dev/learn/css'),
       res('practice', 'Frontend Mentor', 'https://www.frontendmentor.io/'),
+      res('video', 'Kevin Powell', 'https://www.youtube.com/@KevinPowell'),
     ],
   },
   {
@@ -454,6 +481,7 @@ export const SKILLS = [
     resources: [
       res('docs', 'react.dev: Learn React', 'https://react.dev/learn'),
       res('article', 'roadmap.sh: React', 'https://roadmap.sh/react'),
+      res('video', 'freeCodeCamp', 'https://www.youtube.com/@freecodecamp'),
     ],
     roadmapSh: 'react',
   },
@@ -600,6 +628,7 @@ export const SKILLS = [
     resources: [
       res('docs', 'Node.js Learn', 'https://nodejs.org/en/learn'),
       res('article', 'roadmap.sh: Node.js', 'https://roadmap.sh/nodejs'),
+      res('video', 'Traversy Media', 'https://www.youtube.com/@TraversyMedia'),
     ],
     roadmapSh: 'nodejs',
   },
@@ -685,6 +714,7 @@ export const SKILLS = [
     resources: [
       res('docs', 'MDN: HTTP', 'https://developer.mozilla.org/en-US/docs/Web/HTTP'),
       res('article', 'roadmap.sh: API design', 'https://roadmap.sh/api-design'),
+      res('video', 'Hussein Nasser', 'https://www.youtube.com/@hnasr'),
     ],
     roadmapSh: 'api-design',
   },
@@ -749,7 +779,7 @@ export const SKILLS = [
     resources: [
       res('practice', 'SQLBolt', 'https://sqlbolt.com/'),
       res('practice', 'LeetCode: Top SQL 50', 'https://leetcode.com/studyplan/top-sql-50/'),
-      res('article', 'roadmap.sh: SQL', 'https://roadmap.sh/sql'),
+      res('video', 'Alex The Analyst', 'https://www.youtube.com/@AlexTheAnalyst'),
     ],
     roadmapSh: 'sql',
   },
@@ -827,6 +857,7 @@ export const SKILLS = [
     resources: [
       res('docs', 'Docker: Get started', 'https://docs.docker.com/get-started/'),
       res('article', 'roadmap.sh: Docker', 'https://roadmap.sh/docker'),
+      res('video', 'TechWorld with Nana', 'https://www.youtube.com/@TechWorldwithNana'),
     ],
     roadmapSh: 'docker',
   },
@@ -845,6 +876,7 @@ export const SKILLS = [
     resources: [
       res('docs', 'Kubernetes basics tutorial', 'https://kubernetes.io/docs/tutorials/kubernetes-basics/'),
       res('article', 'roadmap.sh: Kubernetes', 'https://roadmap.sh/kubernetes'),
+      res('video', 'TechWorld with Nana', 'https://www.youtube.com/@TechWorldwithNana'),
     ],
     roadmapSh: 'kubernetes',
   },
@@ -860,7 +892,10 @@ export const SKILLS = [
     advanced: ['GitOps with Argo CD'],
     practice: 'Add CI to 3 repositories',
     project: 'Build a pipeline that tests, builds and deploys an app',
-    resources: [res('docs', 'GitHub Actions docs', 'https://docs.github.com/en/actions')],
+    resources: [
+      res('docs', 'GitHub Actions docs', 'https://docs.github.com/en/actions'),
+      res('video', 'TechWorld with Nana', 'https://www.youtube.com/@TechWorldwithNana'),
+    ],
   },
   {
     id: 'cloud',
@@ -979,6 +1014,7 @@ export const SKILLS = [
     resources: [
       res('practice', 'PortSwigger Web Security Academy', 'https://portswigger.net/web-security'),
       res('docs', 'OWASP Top 10', 'https://owasp.org/www-project-top-ten/'),
+      res('video', 'John Hammond', 'https://www.youtube.com/@_JohnHammond'),
     ],
   },
   {
@@ -1011,7 +1047,7 @@ export const SKILLS = [
     practice: 'Complete 10 network security labs',
     project: 'Build and segment a home lab network',
     resources: [
-      res('docs', 'Nmap Network Scanning', 'https://nmap.org/book/'),
+      res('book', 'Nmap Network Scanning', 'https://nmap.org/book/'),
       res('docs', 'Wireshark documentation', 'https://www.wireshark.org/docs/'),
     ],
   },
@@ -1079,7 +1115,10 @@ export const SKILLS = [
     advanced: ['Dynamic arrays and LAMBDA'],
     practice: 'Analyse 3 datasets with pivot tables',
     project: 'Build an interactive sales dashboard in Excel',
-    resources: [res('docs', 'Microsoft Excel help & learning', 'https://support.microsoft.com/en-us/excel')],
+    resources: [
+      res('docs', 'Microsoft Excel help & learning', 'https://support.microsoft.com/en-us/excel'),
+      res('video', 'Alex The Analyst', 'https://www.youtube.com/@AlexTheAnalyst'),
+    ],
   },
   {
     id: 'pandas',
@@ -1095,6 +1134,7 @@ export const SKILLS = [
     resources: [
       res('docs', 'pandas getting started', 'https://pandas.pydata.org/docs/getting_started/index.html'),
       res('course', 'Kaggle Learn: Pandas', 'https://www.kaggle.com/learn/pandas'),
+      res('video', 'Corey Schafer', 'https://www.youtube.com/@coreyms'),
     ],
   },
   {
@@ -1198,7 +1238,7 @@ export const SKILLS = [
     advanced: ['Shiny apps'],
     practice: 'Work through R for Data Science exercises',
     project: 'Publish an R Markdown report',
-    resources: [res('docs', 'R for Data Science', 'https://r4ds.hadley.nz/')],
+    resources: [res('book', 'R for Data Science', 'https://r4ds.hadley.nz/')],
   },
   {
     id: 'etl',
@@ -1273,6 +1313,8 @@ export const SKILLS = [
     resources: [
       res('course', 'Machine Learning Specialization', 'https://www.coursera.org/specializations/machine-learning-introduction'),
       res('course', 'Kaggle Learn: Intro to ML', 'https://www.kaggle.com/learn/intro-to-machine-learning'),
+      res('book', 'An Introduction to Statistical Learning', 'https://www.statlearning.com/'),
+      res('video', 'StatQuest', 'https://www.youtube.com/@statquest'),
     ],
   },
   {
@@ -1303,7 +1345,8 @@ export const SKILLS = [
     project: 'Train an image classifier and deploy it as a demo',
     resources: [
       res('course', 'fast.ai: Practical Deep Learning', 'https://course.fast.ai/'),
-      res('docs', 'Dive into Deep Learning', 'https://d2l.ai/'),
+      res('book', 'Dive into Deep Learning', 'https://d2l.ai/'),
+      res('video', 'Andrej Karpathy', 'https://www.youtube.com/@AndrejKarpathy'),
     ],
   },
   {
@@ -1363,7 +1406,10 @@ export const SKILLS = [
     advanced: ['Fine-tuning and adapters (LoRA)'],
     practice: 'Build 3 small LLM-powered tools',
     project: 'Build a RAG app over your own documents',
-    resources: [res('course', 'Hugging Face Learn', 'https://huggingface.co/learn')],
+    resources: [
+      res('course', 'Hugging Face Learn', 'https://huggingface.co/learn'),
+      res('video', 'Andrej Karpathy', 'https://www.youtube.com/@AndrejKarpathy'),
+    ],
   },
   {
     id: 'mlops',
@@ -1472,6 +1518,80 @@ export const SKILLS = [
     resources: [
       res('docs', 'Google Play Console help', 'https://support.google.com/googleplay/android-developer/'),
       res('docs', 'App Store Connect help', 'https://developer.apple.com/help/app-store-connect/'),
+    ],
+  },
+
+  // ── Blockchain ───────────────────────────────────────────────────────────
+  {
+    id: 'blockchain-fundamentals',
+    name: 'Blockchain Fundamentals',
+    category: 'Blockchain',
+    aliases: ['blockchain', 'ethereum', 'web3 basics'],
+    prerequisites: ['programming-fundamentals'],
+    hours: 25,
+    why: 'Blocks, consensus, gas and the EVM are the base every smart-contract role builds on.',
+    topics: ['Hashing, blocks and chains', 'Keys, wallets and signatures', 'Consensus: proof of work and proof of stake', 'Accounts, gas and transactions', 'The EVM and smart contracts', 'Token standards (ERC-20, ERC-721)'],
+    advanced: ['Layer 2 scaling and rollups'],
+    practice: 'Send and inspect 10 transactions on a testnet block explorer',
+    project: 'Build a testnet transaction explorer',
+    resources: [
+      res('docs', 'ethereum.org developer docs', 'https://ethereum.org/en/developers/docs/'),
+      res('video', 'Patrick Collins', 'https://www.youtube.com/@PatrickAlphaC'),
+      res('article', 'roadmap.sh: Blockchain', 'https://roadmap.sh/blockchain'),
+    ],
+    roadmapSh: 'blockchain',
+  },
+  {
+    id: 'solidity',
+    name: 'Solidity',
+    category: 'Blockchain',
+    aliases: ['smart contracts'],
+    prerequisites: ['blockchain-fundamentals'],
+    hours: 35,
+    why: 'Solidity is the dominant language for Ethereum and EVM smart contracts.',
+    topics: ['Types, functions and visibility', 'Storage, memory and calldata', 'Events, errors and modifiers', 'Inheritance and interfaces', 'Testing contracts with Hardhat or Foundry', 'Gas optimisation'],
+    advanced: ['Upgradeable contracts', 'Yul assembly basics'],
+    practice: 'Complete the CryptoZombies Solidity path',
+    project: 'Write and test an ERC-20 token with a vesting contract',
+    resources: [
+      res('docs', 'Solidity documentation', 'https://docs.soliditylang.org/'),
+      res('practice', 'CryptoZombies', 'https://cryptozombies.io/'),
+      res('docs', 'Hardhat docs', 'https://hardhat.org/docs'),
+    ],
+  },
+  {
+    id: 'web3',
+    name: 'dApp Development',
+    category: 'Blockchain',
+    aliases: ['web3', 'ethers.js', 'web3.js', 'dapp', 'dapps'],
+    prerequisites: ['solidity', 'javascript'],
+    hours: 25,
+    why: 'dApps connect users and wallets to smart contracts through a web front end.',
+    topics: ['Wallet connection and signing', 'Reading and writing contract state with ethers.js', 'Listening to events', 'Deploying to a testnet', 'Transaction states and error handling in the UI'],
+    advanced: ['Indexing with The Graph'],
+    practice: 'Build 3 small contract-connected UIs',
+    project: 'Ship a token-gated dApp on a testnet',
+    resources: [
+      res('docs', 'ethers.js documentation', 'https://docs.ethers.org/'),
+      res('docs', 'ethereum.org developer docs', 'https://ethereum.org/en/developers/docs/'),
+    ],
+  },
+  {
+    id: 'smart-contract-security',
+    name: 'Smart Contract Security',
+    category: 'Blockchain',
+    aliases: ['smart contract auditing', 'defi security'],
+    prerequisites: ['solidity'],
+    hours: 30,
+    why: 'Contract bugs are irreversible and expensive, so security is what blockchain employers screen for hardest.',
+    topics: ['Reentrancy', 'Access control flaws', 'Arithmetic and precision issues', 'Oracle and price manipulation', 'Front-running and MEV', 'Audit methodology and reporting'],
+    advanced: ['Formal verification basics'],
+    practice: 'Complete 15 Ethernaut levels',
+    project: 'Audit a vulnerable contract and publish a findings report',
+    resources: [
+      res('practice', 'Ethernaut', 'https://ethernaut.openzeppelin.com/'),
+      res('docs', 'OpenZeppelin Contracts', 'https://docs.openzeppelin.com/contracts'),
+      res('docs', 'Solidity security considerations', 'https://docs.soliditylang.org/en/latest/security-considerations.html'),
     ],
   },
 

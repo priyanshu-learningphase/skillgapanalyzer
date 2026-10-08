@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Check, ChevronDown, Clock, ArrowUpRight, FolderGit2 } from 'lucide-react';
+import { Check, ChevronDown, Clock, ArrowUpRight, FolderGit2, RotateCcw, FastForward } from 'lucide-react';
 import ProgressBar from '../ui/ProgressBar';
 import PriorityBadge from '../ui/PriorityBadge';
 import TaskList from './TaskList';
@@ -72,6 +72,16 @@ const PhaseCard = ({ phase, stats, expanded, onToggleExpand, completed, onToggle
                 </span>
                 {primary?.reason === 'prerequisite' && <span>Prerequisite for {primary.requiredBy.join(', ')}</span>}
                 {primary?.priority && primary.reason === 'gap' && <PriorityBadge priority={primary.priority} />}
+                {phase.assessmentBand === 'repeat' && (
+                  <span className="inline-flex items-center gap-1 font-medium text-warning-700">
+                    <RotateCcw className="h-3 w-3" aria-hidden /> Repeating fundamentals
+                  </span>
+                )}
+                {phase.assessmentBand === 'advance' && (
+                  <span className="inline-flex items-center gap-1 font-medium text-success-700">
+                    <FastForward className="h-3 w-3" aria-hidden /> Beginner content skipped
+                  </span>
+                )}
               </div>
               {blockedBy && stats.status !== 'completed' && (
                 <p className={cx('mt-2 text-xs', stats.done > 0 ? 'text-warning-700' : 'text-muted-light')}>
@@ -109,14 +119,23 @@ const PhaseCard = ({ phase, stats, expanded, onToggleExpand, completed, onToggle
                       <p className="mt-0.5 text-sm text-ink">{phase.practice}</p>
                     </div>
                   )}
-                  {phase.project?.title && (
-                    <div className="rounded-lg bg-slate-50 px-3 py-2.5">
-                      <p className="flex items-center gap-1 text-[11px] font-medium uppercase tracking-wide text-muted">
-                        <FolderGit2 className="h-3 w-3" aria-hidden /> Project
-                      </p>
-                      <p className="mt-0.5 text-sm text-ink">{phase.project.title}</p>
-                    </div>
-                  )}
+                  {phase.project?.title &&
+                    (phase.project.id ? (
+                      <Link to={`/projects/${phase.project.id}`} className="group rounded-lg bg-slate-50 px-3 py-2.5 hover:bg-slate-100">
+                        <p className="flex items-center gap-1 text-[11px] font-medium uppercase tracking-wide text-muted">
+                          <FolderGit2 className="h-3 w-3" aria-hidden /> Project
+                          <ArrowUpRight className="ml-auto h-3 w-3 text-muted-light group-hover:text-ink" aria-hidden />
+                        </p>
+                        <p className="mt-0.5 text-sm text-ink">{phase.project.title}</p>
+                      </Link>
+                    ) : (
+                      <div className="rounded-lg bg-slate-50 px-3 py-2.5">
+                        <p className="flex items-center gap-1 text-[11px] font-medium uppercase tracking-wide text-muted">
+                          <FolderGit2 className="h-3 w-3" aria-hidden /> Project
+                        </p>
+                        <p className="mt-0.5 text-sm text-ink">{phase.project.title}</p>
+                      </div>
+                    ))}
                 </div>
                 <Link to={`/roadmap/${phase.id}`} className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-ink hover:underline">
                   Open details & resources <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />

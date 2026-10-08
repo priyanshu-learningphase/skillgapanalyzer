@@ -16,7 +16,7 @@ Rules:
 - Scale depth to "experienceLevel" and the target level.
 - "practice": one specific practice goal with a count and platform when relevant.
 - "project": a realistic portfolio project for this phase, tied to the target role: a title and one or two sentences.
-- "resources": up to 3 well-known, free resources described by "type" (docs, video, course, article, practice, project) and their exact public title. Do not include URLs.
+- "resources": up to 3 well-known resources described by "type" (docs, video, book, course, article, practice, project) and their exact public title. Do not include URLs.
 - For capstone and interview phases, keep the focus on the target role.
 - Plain text only: no markdown, no emojis.
 - Output JSON matching the response schema and nothing else.`;

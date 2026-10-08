@@ -32,9 +32,9 @@ const ReadinessCard = ({ analysis, delta, history = [], roleName }) => {
       <div className="mt-4 flex items-end justify-between gap-4">
         <p className="text-6xl font-semibold leading-none tracking-tight text-ink">
           {analysis.readiness}
-          <span className="text-3xl text-muted-light">%</span>
+          <span className="ml-1 text-2xl font-medium text-muted-light">/ 100</span>
         </p>
-        {values.length >= 2 && <Sparkline values={values} labels={labels} format={(v) => `${v}%`} width={112} height={36} />}
+        {values.length >= 2 && <Sparkline values={values} labels={labels} format={(v) => `${v}/100`} width={112} height={36} />}
       </div>
 
       <p className="mt-3 text-sm text-muted">
@@ -46,7 +46,7 @@ const ReadinessCard = ({ analysis, delta, history = [], roleName }) => {
           <>
             <span className={cx('font-medium', delta > 0 ? 'text-success-700' : 'text-danger-700')}>
               {delta > 0 ? '+' : ''}
-              {delta}%
+              {delta}
             </span>{' '}
             since your last analysis
           </>
@@ -65,8 +65,8 @@ const ReadinessCard = ({ analysis, delta, history = [], roleName }) => {
           <dd className="mt-0.5 text-lg font-semibold text-ink">{analysis.gaps.length}</dd>
         </div>
         <div>
-          <dt className="text-xs text-muted">Priority</dt>
-          <dd className="mt-0.5 text-lg font-semibold text-ink">{analysis.priorityGaps.length}</dd>
+          <dt className="text-xs text-muted">Critical</dt>
+          <dd className="mt-0.5 text-lg font-semibold text-ink">{analysis.counts.critical}</dd>
         </div>
       </dl>
     </Card>

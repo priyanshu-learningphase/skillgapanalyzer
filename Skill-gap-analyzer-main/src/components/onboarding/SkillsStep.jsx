@@ -1,5 +1,7 @@
-import { useMemo } from 'react';
-import { X, Sprout } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { X, Sprout, FileUp } from 'lucide-react';
+import Button from '../ui/Button';
+import ResumeImportModal from './ResumeImportModal';
 import SkillPicker from './SkillPicker';
 import Segmented from '../ui/Segmented';
 import { SKILL_LEVELS, nearestSkillLevel } from '../../data/options';
@@ -7,6 +9,7 @@ import { getSkill } from '../../data/skills';
 
 /** Step 3: choose current skills and a confidence level for each. */
 const SkillsStep = ({ skills, onChange, role, fromScratch, onFromScratch }) => {
+  const [importing, setImporting] = useState(false);
   const suggestions = useMemo(() => {
     if (!role) return [];
     const ids = [...new Set(role.requirements.flatMap((r) => r.skills))];
@@ -20,10 +23,21 @@ const SkillsStep = ({ skills, onChange, role, fromScratch, onFromScratch }) => {
   };
   const setLevel = (id, level) => onChange(skills.map((s) => (s.id === id ? { ...s, level } : s)));
   const remove = (id) => onChange(skills.filter((s) => s.id !== id));
+  const addMany = (list) => {
+    const existing = new Set(skills.map((s) => s.id));
+    onChange([...skills, ...list.filter((s) => !existing.has(s.id)).map(({ id, name, level }) => ({ id, name, level }))]);
+    if (fromScratch && list.length) onFromScratch(false);
+  };
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1.1fr_1fr]">
       <div className="card p-5">
+        <div className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-dashed border-slate-300 bg-slate-50/60 px-3 py-2.5">
+          <p className="text-sm text-muted">Have a resume? Detect your skills automatically.</p>
+          <Button size="sm" variant="secondary" icon={FileUp} onClick={() => setImporting(true)}>
+            Import resume
+          </Button>
+        </div>
         <SkillPicker
           selectedIds={skills.map((s) => s.id)}
           onAdd={add}
@@ -78,6 +92,7 @@ const SkillsStep = ({ skills, onChange, role, fromScratch, onFromScratch }) => {
           </ul>
         )}
       </div>
+      <ResumeImportModal open={importing} onClose={() => setImporting(false)} existingIds={new Set(skills.map((s) => s.id))} onAdd={addMany} />
     </div>
   );
 };

@@ -38,6 +38,10 @@ service cloud.firestore {
     match /progress/{userId} {
       allow read, write: if isOwner(userId);
     }
+    // Resume, job description and GitHub analyses — private to the owner.
+    match /insights/{userId} {
+      allow read, write: if isOwner(userId);
+    }
 
     // Industry roles are readable by all authenticated users
     match /industry_roles/{roleId} {

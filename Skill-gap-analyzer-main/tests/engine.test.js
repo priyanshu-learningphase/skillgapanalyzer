@@ -56,9 +56,12 @@ test('catalog: prerequisite graph has no cycles', () => {
 
 test('priority mapping matches product examples', () => {
   assert.equal(priorityFor(60, 'high'), 'critical'); // System Design 20 -> 80
-  assert.equal(priorityFor(35, 'critical'), 'high'); // DSA 55 -> 90
-  assert.equal(priorityFor(35, 'medium'), 'medium'); // SQL 40 -> 75
-  assert.equal(priorityFor(10, 'high'), 'low'); // Git 70 -> 80
+  assert.equal(priorityFor(35, 'critical'), 'critical'); // DSA 55 -> 90
+  assert.equal(priorityFor(35, 'medium'), 'important'); // SQL 40 -> 75
+  assert.equal(priorityFor(10, 'high'), 'optional'); // Git 70 -> 80
+  assert.equal(priorityFor(30, 'low'), 'optional');
+  assert.equal(priorityFor(5, 'critical'), 'optional'); // nearly there
+  assert.equal(priorityFor(12, 'critical'), 'important');
   assert.equal(priorityFor(0, 'critical'), null);
 });
 
@@ -73,7 +76,7 @@ test('analysis produces readiness and priority-sorted gaps', () => {
   const { analysis } = plan(profile());
   assert.ok(analysis.readiness >= 0 && analysis.readiness <= 100);
   assert.ok(analysis.gaps.length > 0);
-  const ranks = analysis.gaps.map((g) => ['critical', 'high', 'medium', 'low'].indexOf(g.priority));
+  const ranks = analysis.gaps.map((g) => ['critical', 'important', 'optional'].indexOf(g.priority));
   assert.deepEqual(ranks, [...ranks].sort((x, y) => x - y));
 });
 

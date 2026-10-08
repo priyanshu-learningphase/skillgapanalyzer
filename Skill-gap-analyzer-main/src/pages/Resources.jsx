@@ -48,9 +48,9 @@ const Resources = () => {
 
   return (
     <div>
-      <PageHeader eyebrow="Resources" title="Learning resources" description="A short, curated list per skill — learn it, practise it, build something with it." />
+      <PageHeader title="Learning resources" description="A short, curated list per skill — learn it, practise it, build something with it." />
 
-      <div className="grid gap-4 lg:grid-cols-[17rem_1fr]">
+      <div className="grid gap-4 lg:grid-cols-[17rem_minmax(0,1fr)]">
         <Card className="overflow-hidden lg:sticky lg:top-20 lg:max-h-[calc(100vh-7rem)] lg:self-start">
           <div className="border-b border-line p-3">
             <div className="relative">
@@ -93,7 +93,7 @@ const Resources = () => {
               {phase && <Badge tone="accent">In your roadmap · Week {phase.weekStart}</Badge>}
             </div>
 
-            <div className="mt-6 grid gap-8 border-t border-line pt-6 md:grid-cols-[1fr_14rem]">
+            <div className="mt-6 grid gap-8 border-t border-line pt-6 md:grid-cols-[minmax(0,1fr)_14rem]">
               <ResourceList resources={resources} practice={skill.practice} project={{ title: skill.project }} />
               <div className="space-y-5">
                 <div>

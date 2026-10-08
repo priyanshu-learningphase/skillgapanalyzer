@@ -1,12 +1,15 @@
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
+  Puzzle,
   ScanSearch,
-  Compass,
   Route,
-  TrendingUp,
-  BookOpen,
-  Settings,
+  FolderGit2,
+  GraduationCap,
+  Briefcase,
+  MessagesSquare,
+  Github,
+  UserCircle2,
   Building2,
   HardDrive,
 } from 'lucide-react';
@@ -18,11 +21,14 @@ import { cx } from '../../lib/cx';
 
 export const NAV_ITEMS = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/analysis', label: 'Skill Analysis', icon: ScanSearch },
-  { to: '/careers', label: 'Career Paths', icon: Compass },
+  { to: '/skills', label: 'My Skills', icon: Puzzle },
+  { to: '/gap', label: 'Skill Gap', icon: ScanSearch },
   { to: '/roadmap', label: 'Roadmap', icon: Route },
-  { to: '/progress', label: 'Progress', icon: TrendingUp },
-  { to: '/resources', label: 'Resources', icon: BookOpen },
+  { to: '/projects', label: 'Projects', icon: FolderGit2 },
+  { to: '/assessments', label: 'Assessments', icon: GraduationCap },
+  { to: '/jobs', label: 'Jobs', icon: Briefcase, also: ['/careers'] },
+  { to: '/interview', label: 'Interview Prep', icon: MessagesSquare },
+  { to: '/github', label: 'GitHub', icon: Github },
 ];
 
 const NavItem = ({ to, label, icon: Icon, badge, onNavigate }) => (
@@ -68,18 +74,19 @@ const Sidebar = ({ onNavigate }) => {
           <NavItem key={item.to} {...item} onNavigate={onNavigate} badge={item.to === '/roadmap' ? roadmapBadge : null} />
         ))}
         <div className="my-3 h-px bg-line" />
-        <NavItem to="/settings" label="Settings" icon={Settings} onNavigate={onNavigate} />
+        <NavItem to="/profile" label="Profile" icon={UserCircle2} onNavigate={onNavigate} />
         {isAdmin && <NavItem to="/admin" label="Campus analytics" icon={Building2} onNavigate={onNavigate} />}
       </nav>
 
       <div className="space-y-3 border-t border-line p-3">
         {role && analysis ? (
-          <NavLink to="/analysis" onClick={onNavigate} className="block rounded-lg border border-line bg-white p-3 transition-colors hover:border-slate-300">
-            <p className="eyebrow">Current goal</p>
+          <NavLink to="/gap" onClick={onNavigate} className="block rounded-lg border border-line bg-white p-3 transition-colors hover:border-slate-300">
+            <p className="eyebrow">Target</p>
             <p className="mt-1 truncate text-[13px] font-semibold text-ink">{role.name}</p>
+            {role.company && <p className="truncate text-xs text-muted">at {role.company.name}</p>}
             <div className="mt-2 flex items-center gap-2">
               <ProgressBar value={analysis.readiness} size="sm" label="Career readiness" />
-              <span className="tabular text-xs font-medium text-ink">{analysis.readiness}%</span>
+              <span className="tabular text-xs font-medium text-ink">{analysis.readiness}</span>
             </div>
           </NavLink>
         ) : null}

@@ -7,13 +7,17 @@ import {
   ArrowRight,
   Target,
   ScanSearch,
-  ListOrdered,
   Route,
   Gauge,
-  Compass,
   RefreshCw,
-  TrendingUp,
-  Layers,
+  FileText,
+  Github,
+  Briefcase,
+  GraduationCap,
+  Shuffle,
+  MessagesSquare,
+  FolderGit2,
+  BadgeCheck,
 } from 'lucide-react';
 import Logo from '../components/layout/Logo';
 import Button from '../components/ui/Button';
@@ -25,19 +29,23 @@ import { useAuth } from '../context/AuthContext';
 import { useStartPath } from '../hooks/useStartPath';
 
 const STEPS = [
-  { icon: Target, title: 'Pick your target role', body: 'Choose from 12 career paths or define your own.' },
-  { icon: ScanSearch, title: 'Map your current skills', body: 'Select what you know and rate your confidence in each.' },
-  { icon: ListOrdered, title: 'See your exact gaps', body: 'Readiness score, strengths and priority-ranked gaps.' },
-  { icon: Route, title: 'Follow your roadmap', body: 'A week-by-week plan sized to your schedule and timeline.' },
+  { icon: Target, title: 'Set your goal', body: 'Pick a role and, optionally, a target company.' },
+  { icon: FileText, title: 'Bring your evidence', body: 'Your skills, resume and GitHub — we read them all.' },
+  { icon: ScanSearch, title: 'See your exact gaps', body: 'A readiness score and gaps ranked by what matters.' },
+  { icon: Route, title: 'Follow your roadmap', body: 'Learn → Practice → Build → Assess, week by week.' },
+  { icon: BadgeCheck, title: 'Prove you’re ready', body: 'Assessments, projects and interview prep move your score.' },
 ];
 
 const FEATURES = [
-  { icon: Gauge, title: 'Career readiness score', body: 'A weighted score against what the role actually requires, not a guess.' },
-  { icon: ListOrdered, title: 'Priority-ranked gaps', body: 'Every gap is sized and ranked so you know what matters most.' },
-  { icon: Compass, title: 'Career matching', body: 'See how your skills map to 12 roles and where you’re closest.' },
-  { icon: Layers, title: 'Dependency-aware plans', body: 'Prerequisites first. Never Kubernetes before Docker.' },
-  { icon: RefreshCw, title: 'Adaptive roadmap', body: 'Check in on a skill and the plan re-orders, skips or deepens.' },
-  { icon: TrendingUp, title: 'Progress tracking', body: 'Tasks, hours, streaks and skill growth in one place.' },
+  { icon: Gauge, title: 'Career readiness score', body: 'A score out of 100 against what the role requires — and what’s keeping you from 90.' },
+  { icon: FileText, title: 'Resume analyzer', body: 'Upload a PDF. See detected skills, weak sections and missing keywords for your target role.' },
+  { icon: Briefcase, title: 'Job description match', body: 'Paste a real job post, get your match and a roadmap aimed at exactly that job.' },
+  { icon: Github, title: 'GitHub analyzer', body: 'A portfolio score from your public repos, with the projects you should build next.' },
+  { icon: RefreshCw, title: 'Adaptive roadmap', body: 'Fail an assessment and fundamentals come back; ace it and beginner content is skipped.' },
+  { icon: GraduationCap, title: 'Skill assessments', body: 'Short, auto-graded checks that turn self-ratings into evidence.' },
+  { icon: FolderGit2, title: 'Project recommendations', body: 'Portfolio projects ranked by the gaps they close, with GitHub-ready structure.' },
+  { icon: Shuffle, title: 'Career simulator', body: 'Compare the same role at Google, Amazon or a startup — match and prep time.' },
+  { icon: MessagesSquare, title: 'Interview prep', body: 'Questions built from your role, company, weak areas and your own projects.' },
 ];
 
 const Landing = () => {
@@ -74,7 +82,7 @@ const Landing = () => {
           <div>
             <p className="mb-5 inline-flex items-center gap-2 rounded-full border border-line bg-white px-3 py-1 text-xs font-medium text-muted shadow-card">
               <span className="h-1.5 w-1.5 rounded-full bg-accent" aria-hidden />
-              Skill analysis · Career matching · Roadmaps
+              Career readiness · Roadmaps · Assessments
             </p>
             <h1 className="text-4xl font-semibold leading-[1.08] tracking-[-0.03em] text-ink sm:text-5xl lg:text-[3.4rem]">
               Know what you’re missing.
@@ -82,7 +90,7 @@ const Landing = () => {
               <span className="text-muted">Know what to learn next.</span>
             </h1>
             <p className="mt-6 max-w-xl text-base leading-relaxed text-muted sm:text-lg">
-              Analyze your skills against your target career and get a personalized learning roadmap built around your goals.
+              Bring your skills, resume and GitHub. See exactly what your target role needs, follow a week-by-week roadmap, and prove you’re ready.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Button size="lg" to={startPath} iconRight={ArrowRight}>
@@ -115,8 +123,8 @@ const Landing = () => {
       <section id="how" className="scroll-mt-16 border-b border-line bg-canvas">
         <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
           <p className="eyebrow">How it works</p>
-          <h2 className="mt-2 max-w-xl text-2xl font-semibold tracking-tight sm:text-3xl">From “I want to become…” to a plan you can start today.</h2>
-          <ol className="mt-10 grid gap-px overflow-hidden rounded-card border border-line bg-line sm:grid-cols-2 lg:grid-cols-4">
+          <h2 className="mt-2 max-w-xl text-2xl font-semibold tracking-tight sm:text-3xl">From “I want to become…” to proof that you’re ready.</h2>
+          <ol className="mt-10 grid gap-px overflow-hidden rounded-card border border-line bg-line sm:grid-cols-2 lg:grid-cols-5">
             {STEPS.map((step, index) => (
               <li key={step.title} className="bg-white p-6">
                 <div className="flex items-center justify-between">

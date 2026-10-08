@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import { cx } from '../../lib/cx';
 
 // Fill and a lighter step of the same ramp for the track.
@@ -15,14 +14,10 @@ const SIZES = { xs: 'h-1', sm: 'h-1.5', md: 'h-2', lg: 'h-2.5' };
 
 /**
  * Horizontal meter. `marker` draws a target tick (e.g. the required level).
+ * Grows in with a CSS animation on mount and transitions on later changes.
  */
 const ProgressBar = ({ value = 0, max = 100, tone = 'accent', size = 'md', marker, label, className }) => {
   const pct = Math.max(0, Math.min(100, (value / max) * 100));
-  const [width, setWidth] = useState(0);
-  useEffect(() => {
-    const frame = requestAnimationFrame(() => setWidth(pct));
-    return () => cancelAnimationFrame(frame);
-  }, [pct]);
   const [fill, track] = TONES[tone] || TONES.accent;
 
   return (
@@ -34,10 +29,7 @@ const ProgressBar = ({ value = 0, max = 100, tone = 'accent', size = 'md', marke
       aria-valuemax={max}
       aria-label={label}
     >
-      <div
-        className={cx('h-full rounded-full transition-[width] duration-700 ease-out', fill)}
-        style={{ width: `${width}%` }}
-      />
+      <div className={cx('h-full rounded-full transition-[width] duration-700 ease-out animate-grow', fill)} style={{ width: `${pct}%` }} />
       {marker != null && (
         <span
           className="absolute -top-1 -bottom-1 w-0.5 rounded-full bg-ink"

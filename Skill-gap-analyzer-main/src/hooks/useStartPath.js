@@ -8,7 +8,7 @@ import { useWorkspace } from '../context/WorkspaceContext';
 export const useStartPath = (roleId) => {
   const { currentUser } = useAuth();
   const { isOnboarded } = useWorkspace();
-  const target = roleId ? `/onboarding?role=${roleId}` : isOnboarded ? '/analysis' : '/onboarding';
+  const target = roleId ? `/onboarding?role=${roleId}` : isOnboarded ? '/gap' : '/onboarding';
   if (!currentUser) return `/signup?next=${encodeURIComponent(target)}`;
   return target;
 };

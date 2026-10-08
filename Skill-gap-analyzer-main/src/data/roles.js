@@ -8,6 +8,7 @@
  */
 
 import { getSkill } from './skills.js';
+import { applyCompany } from './companies.js';
 
 export const IMPORTANCE = {
   critical: { label: 'Critical', weight: 4 },
@@ -359,22 +360,51 @@ export const ROLES = [
     },
     interview: ['Practise 25 cloud and networking questions', 'Walk through 2 architecture designs', 'Prepare to explain your capstone', 'Prepare 5 STAR stories'],
   },
+  {
+    id: 'blockchain-developer',
+    name: 'Blockchain Developer',
+    track: 'Engineering',
+    tagline: 'Build secure smart contracts and dApps.',
+    description: 'Blockchain developers write, test and secure smart contracts and the applications that use them.',
+    requirements: [
+      req('blockchain-fundamentals', 80, 'critical'),
+      req('solidity', 80, 'critical'),
+      req('javascript', 75, 'high'),
+      req('web3', 70, 'high'),
+      req('smart-contract-security', 65, 'high'),
+      req('git', 70, 'high'),
+      req('testing', 60, 'medium'),
+      req('react', 50, 'medium'),
+      req('rest-apis', 40, 'low'),
+    ],
+    capstone: {
+      title: 'Capstone: audited dApp',
+      description: 'Ship a dApp with tested smart contracts on a testnet, plus a self-audit report covering common vulnerabilities.',
+      tasks: ['Design the contracts and threat model', 'Implement and test the contracts', 'Build the dApp front end', 'Self-audit and publish the report'],
+    },
+    interview: ['Explain 10 common smart contract vulnerabilities', 'Walk through gas optimisation trade-offs', 'Solve 15 medium DSA problems', 'Present your capstone and audit', 'Prepare 5 STAR stories'],
+  },
 ];
 
 export const ROLE_MAP = Object.fromEntries(ROLES.map((role) => [role.id, role]));
 
 export const ROLE_TRACKS = ['Engineering', 'Data & AI', 'Infrastructure', 'Security'];
 
-/** Roles featured first in onboarding, in the order product asked for. */
+/** Display order for career selection. */
 export const FEATURED_ROLE_IDS = [
   'software-engineer',
   'backend-developer',
   'frontend-developer',
   'fullstack-developer',
   'data-scientist',
+  'data-analyst',
   'ml-engineer',
   'devops-engineer',
+  'cloud-engineer',
   'cybersecurity-engineer',
+  'blockchain-developer',
+  'data-engineer',
+  'mobile-developer',
 ];
 
 /** Map ids/names from the original app (e.g. "ai-ml-engineer") to current roles. */
@@ -419,11 +449,17 @@ export const buildCustomRole = (custom) => {
   };
 };
 
-/** Resolve the role for a profile, including custom roles. */
+/** Resolve the role for a profile, including custom roles and the target company. */
 export const resolveRole = (profile) => {
   if (!profile?.targetRoleId) return null;
-  if (profile.targetRoleId === 'custom') return buildCustomRole(profile.customRole);
-  return ROLE_MAP[profile.targetRoleId] || null;
+  const base = profile.targetRoleId === 'custom' ? buildCustomRole(profile.customRole) : ROLE_MAP[profile.targetRoleId] || null;
+  return applyCompany(base, profile.targetCompany);
+};
+
+/** A role by id with an optional company applied (career simulator, comparisons). */
+export const roleFor = (roleId, company, customRole) => {
+  const base = roleId === 'custom' ? buildCustomRole(customRole) : ROLE_MAP[roleId] || null;
+  return applyCompany(base, company);
 };
 
 /** Human label for a requirement, e.g. "Primary language" or "SQL". */

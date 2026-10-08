@@ -11,23 +11,25 @@ import { FullPageSpinner } from '../components/ui/Spinner';
 import RoleStep, { CUSTOM_ROLE_MIN_SKILLS } from '../components/onboarding/RoleStep';
 import SkillsStep from '../components/onboarding/SkillsStep';
 import { LevelStep, TimeStep, TimelineStep } from '../components/onboarding/PreferenceSteps';
+import GithubStep from '../components/onboarding/GithubStep';
 import { useWorkspace } from '../context/WorkspaceContext';
 import { useToast } from '../context/ToastContext';
 import { buildCustomRole, ROLE_MAP } from '../data/roles';
+import { applyCompany } from '../data/companies';
 import { dailyTimeLabel, timelineLabel, EXPERIENCE_LEVELS } from '../data/options';
 import { weeklyHoursFor } from '../lib/roadmap';
 import { cx } from '../lib/cx';
 
 const STEPS = [
-  { id: 'role', title: 'What do you want to become?', description: 'Pick the role you’re working toward. You can change it any time.' },
+  { id: 'role', title: 'What do you want to become?', description: 'Pick the role you’re working toward and, optionally, a target company. You can change both any time.' },
   { id: 'level', title: 'What is your current level?', description: 'This tunes pacing and how much groundwork your roadmap includes.' },
-  { id: 'skills', title: 'What skills do you already have?', description: 'Select your skills and how confident you are in each. Be honest — it makes the plan better.' },
-  { id: 'time', title: 'How much time can you learn?', description: 'We size every phase of your roadmap to this.' },
-  { id: 'timeline', title: 'What is your target timeline?', description: 'We’ll prioritise what matters most if time is tight.' },
+  { id: 'skills', title: 'What skills do you already have?', description: 'Import them from your resume or pick them yourself, then rate your confidence. Be honest — it makes the plan better.' },
+  { id: 'github', title: 'Analyze your GitHub', description: 'Optional. Your public projects can prove skills and show what your portfolio is missing.', optional: true },
+  { id: 'schedule', title: 'How much time can you learn?', description: 'We size every phase of your roadmap to your daily time and prioritise what matters most if the timeline is tight.' },
 ];
 
 const Onboarding = () => {
-  const { status, career, actions } = useWorkspace();
+  const { status, career, insights, actions } = useWorkspace();
   const toast = useToast();
   const navigate = useNavigate();
   const [params] = useSearchParams();
@@ -47,13 +49,14 @@ const Onboarding = () => {
       skills: career?.skills || [],
       dailyMinutes: career?.dailyMinutes || 60,
       timelineWeeks: career ? career.timelineWeeks ?? null : 12,
+      targetCompany: career?.targetCompany || null,
       fromScratch: false,
     });
   }, [status, career, params, draft]);
 
   const role = useMemo(() => {
     if (!draft?.targetRoleId) return null;
-    return draft.targetRoleId === 'custom' ? buildCustomRole(draft.customRole) : ROLE_MAP[draft.targetRoleId];
+    return applyCompany(draft.targetRoleId === 'custom' ? buildCustomRole(draft.customRole) : ROLE_MAP[draft.targetRoleId], draft.targetCompany);
   }, [draft]);
 
   if (status !== 'ready' || !draft) return <FullPageSpinner />;
@@ -95,12 +98,13 @@ const Onboarding = () => {
       await actions.completeOnboarding({
         targetRoleId: draft.targetRoleId,
         customRole: draft.targetRoleId === 'custom' ? { ...draft.customRole, name: draft.customRole.name.trim() } : null,
+        targetCompany: draft.targetCompany || null,
         level: draft.level,
         skills: draft.skills,
         dailyMinutes: draft.dailyMinutes,
         timelineWeeks: draft.timelineWeeks,
       });
-      navigate('/analysis', { state: { fresh: true } });
+      navigate('/gap', { state: { fresh: true } });
     } catch (err) {
       console.error(err);
       toast.error('We couldn’t run your analysis', { description: err.message });
@@ -155,19 +159,30 @@ const Onboarding = () => {
               onFromScratch={(fromScratch) => update({ fromScratch })}
             />
           )}
-          {step === 3 && <TimeStep value={draft.dailyMinutes} onChange={(dailyMinutes) => update({ dailyMinutes })} />}
+          {step === 3 && (
+            <GithubStep
+              skills={draft.skills}
+              role={role}
+              onAddSkills={(list) => {
+                const existing = new Set(draft.skills.map((s) => s.id));
+                update({ skills: [...draft.skills, ...list.filter((s) => !existing.has(s.id)).map(({ id, name, level }) => ({ id, name, level }))], fromScratch: false });
+              }}
+            />
+          )}
           {step === 4 && (
             <>
+              <TimeStep value={draft.dailyMinutes} onChange={(dailyMinutes) => update({ dailyMinutes })} />
+              <h2 className="mb-4 mt-10 text-lg font-semibold tracking-tight">What is your target timeline?</h2>
               <TimelineStep value={draft.timelineWeeks} onChange={(timelineWeeks) => update({ timelineWeeks })} dailyMinutes={draft.dailyMinutes} />
               <div className="card mt-8 grid gap-4 p-5 text-sm sm:grid-cols-4">
-                <Summary label="Target" value={role?.name} onEdit={() => setStep(0)} />
+                <Summary label="Target" value={role ? `${role.name}${role.company ? ` · ${role.company.name}` : ''}` : null} onEdit={() => setStep(0)} />
                 <Summary label="Level" value={EXPERIENCE_LEVELS.find((l) => l.id === draft.level)?.label} onEdit={() => setStep(1)} />
                 <Summary label="Skills" value={draft.skills.length ? `${draft.skills.length} selected` : 'Starting from scratch'} onEdit={() => setStep(2)} />
                 <Summary
                   label="Schedule"
                   value={`${dailyTimeLabel(draft.dailyMinutes)} · ${timelineLabel(draft.timelineWeeks)}`}
                   hint={`~${weeklyHoursFor(draft.dailyMinutes)} h/week`}
-                  onEdit={() => setStep(3)}
+                  onEdit={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
                 />
               </div>
             </>
@@ -190,7 +205,7 @@ const Onboarding = () => {
             </p>
           )}
           <Button className="ml-auto" size="lg" iconRight={ArrowRight} onClick={next} loading={submitting}>
-            {isLast ? 'Analyze My Skill Gap' : 'Continue'}
+            {isLast ? 'Analyze My Skill Gap' : current.optional && !insights.github ? 'Skip for now' : 'Continue'}
           </Button>
         </div>
       </footer>

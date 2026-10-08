@@ -1,20 +1,33 @@
 /**
- * Dashboard — everything at a glance and the single next step.
+ * Dashboard — where you stand, what's holding you back and what to do this week.
  */
 
 import { Link } from 'react-router-dom';
-import { ArrowRight, Target, ScanSearch, Route, ListOrdered, Flame, Clock, TrendingUp, Play, RefreshCw } from 'lucide-react';
+import { ArrowRight, Target, FileText, Github, ScanSearch, Route, RefreshCw, ArrowUpRight, Building2, CalendarCheck } from 'lucide-react';
 import Card, { CardHeader, CardBody } from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Stat from '../components/ui/Stat';
 import ProgressBar from '../components/ui/ProgressBar';
+import ScoreRing from '../components/ui/ScoreRing';
+import LineChart from '../components/ui/LineChart';
+import DistributionBar from '../components/ui/DistributionBar';
 import PriorityBadge from '../components/ui/PriorityBadge';
-import ActivityFeed from '../components/progress/ActivityFeed';
+import { EmptyState } from '../components/ui/States';
+import WeekPlan from '../components/dashboard/WeekPlan';
+import { readinessBand } from '../components/analysis/ReadinessCard';
 import { useAuth } from '../context/AuthContext';
 import { useWorkspace } from '../context/WorkspaceContext';
-import { currentStreak, greetingFor, improvedSkills, totalHours } from '../lib/progress';
-import { formatWeeks } from '../lib/roadmap';
-import { roleIcon } from '../components/careers/roleIcons';
+import { greetingFor } from '../lib/progress';
+import { buildWeekPlan } from '../lib/weekPlan';
+import { cx } from '../lib/cx';
+
+const FLOW = [
+  [Target, 'Choose a target career', 'Role and, optionally, a target company'],
+  [FileText, 'Add your skills', 'Rate them yourself or import from your resume'],
+  [Github, 'Analyze your GitHub', 'Optional — evidence from your real projects'],
+  [ScanSearch, 'See your exact gaps', 'Readiness score and prioritised gaps'],
+  [Route, 'Follow your roadmap', 'Learn → Practice → Build → Assess, week by week'],
+];
 
 const Welcome = ({ name }) => (
   <div>
@@ -22,25 +35,20 @@ const Welcome = ({ name }) => (
       {greetingFor()}
       {name ? `, ${name}` : ''} 👋
     </h1>
-    <p className="mt-1 text-sm text-muted">Let’s find out where you stand.</p>
+    <p className="mt-1 text-sm text-muted">Let’s find out where you stand and what to learn next.</p>
     <Card className="mt-6 overflow-hidden">
-      <div className="grid lg:grid-cols-[1fr_1fr]">
+      <div className="grid lg:grid-cols-2">
         <div className="p-6 sm:p-8">
           <h2 className="text-xl font-semibold tracking-tight">Start with a skill analysis</h2>
           <p className="mt-2 max-w-md text-sm text-muted">
-            Tell us the role you want and the skills you have. You’ll get a readiness score, your exact gaps and a personalised roadmap — in about three minutes.
+            Tell us the role you want and what you know. You’ll get a career readiness score, your exact gaps and a week-by-week roadmap — then prove progress with assessments.
           </p>
           <Button size="lg" to="/onboarding" iconRight={ArrowRight} className="mt-6">
             Analyze My Skills
           </Button>
         </div>
         <ol className="space-y-4 border-t border-line bg-slate-50/60 p-6 sm:p-8 lg:border-l lg:border-t-0">
-          {[
-            [Target, 'Choose a target role', '12 career paths or your own'],
-            [ScanSearch, 'Rate your current skills', 'Beginner, intermediate or advanced'],
-            [ListOrdered, 'See prioritised gaps', 'What matters most for the role'],
-            [Route, 'Get your roadmap', 'Sized to your schedule and deadline'],
-          ].map(([Icon, title, body], i) => (
+          {FLOW.map(([Icon, title, body], i) => (
             <li key={title} className="flex items-start gap-3">
               <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-line bg-white">
                 <Icon className="h-3.5 w-3.5 text-ink" aria-hidden />
@@ -59,185 +67,208 @@ const Welcome = ({ name }) => (
   </div>
 );
 
+const shortDate = (iso) => (iso ? new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '');
+
 const Dashboard = () => {
   const { userProfile } = useAuth();
-  const { role, analysis, readinessDelta, roadmap, roadmapState, stats, progress, isOnboarded } = useWorkspace();
+  const { role, analysis, readinessDelta, readinessHistory, roadmap, roadmapState, stats, progress, isOnboarded, latestAssessments, actions } = useWorkspace();
   const firstName = userProfile?.name?.split(' ')[0];
 
   if (!isOnboarded) return <Welcome name={firstName} />;
 
-  const streak = currentStreak(progress.activeDates);
-  const hours = totalHours(progress.hoursLog);
-  const improved = improvedSkills(progress.skillHistory);
-  const RoleIcon = roleIcon(role.id);
-  const focus = stats?.currentPhase;
-  const focusStats = stats?.currentPhaseStats;
-  const nextTask = stats?.upNext?.[0];
+  const band = readinessBand(analysis.readiness);
+  const previous = readinessDelta != null ? analysis.readiness - readinessDelta : null;
+  const blockers = analysis.blockers.slice(0, 3);
+  const toNinety = Math.max(0, 90 - analysis.readiness);
+  const projectsDone = Object.values(progress.projects || {}).filter((p) => p.status === 'completed').length;
+  const assessments = Object.values(latestAssessments);
+  const passedCount = assessments.filter((a) => a.pct >= 70).length;
+  const weekItems = buildWeekPlan({ roadmap: roadmapState === 'role-changed' ? null : roadmap, completedTasks: progress.completedTasks, weekChecks: progress.weekChecks, analysis });
+  const keySkills = [...analysis.items].sort((a, b) => b.weight - a.weight || b.gap - a.gap).slice(0, 6);
+  const trend = readinessHistory.map((h) => ({ value: h.readiness_score, label: shortDate(h.createdAt) }));
+  if (!trend.length || trend[trend.length - 1].value !== analysis.readiness) trend.push({ value: analysis.readiness, label: 'Now' });
 
   return (
     <div>
-      <div className="mb-6 flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          {greetingFor()}
-          {firstName ? `, ${firstName}` : ''} 👋
-        </h1>
-        <p className="text-sm text-muted">Here’s where your {role.name} journey stands.</p>
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {greetingFor()}
+            {firstName ? `, ${firstName}` : ''} 👋
+          </h1>
+          <p className="mt-1 flex flex-wrap items-center gap-x-2 text-sm text-muted">
+            Target: <span className="font-medium text-ink">{role.name}</span>
+            {role.company && (
+              <span className="inline-flex items-center gap-1">
+                <Building2 className="h-3.5 w-3.5" aria-hidden /> {role.company.name}
+              </span>
+            )}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="secondary" size="sm" to="/jobs/simulator">
+            Compare companies
+          </Button>
+          <Button variant="secondary" size="sm" to="/profile">
+            Change goal
+          </Button>
+        </div>
       </div>
 
-      {/* Summary row */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Link to="/careers" className="card-interactive flex flex-col p-4">
-          <p className="text-[13px] font-medium text-muted">Your current goal</p>
-          <div className="mt-2 flex items-center gap-2.5">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-ink text-white">
-              <RoleIcon className="h-4 w-4" aria-hidden />
-            </span>
-            <span className="text-[15px] font-semibold leading-tight text-ink">{role.name}</span>
-          </div>
-          <span className="mt-auto pt-3 text-xs text-muted">Compare career matches →</span>
-        </Link>
-        <Stat label="Career readiness" value={analysis.readiness} unit="%" delta={readinessDelta ?? undefined} deltaLabel="%" hint={readinessDelta != null ? 'since last analysis' : 'first analysis'}>
-          <ProgressBar value={analysis.readiness} size="sm" className="mt-3" label="Career readiness" />
-        </Stat>
-        <Stat
-          label="Current skill gaps"
-          value={analysis.gaps.length}
-          hint={analysis.counts.critical ? `${analysis.counts.critical} critical · ${analysis.counts.high} high` : `${analysis.counts.high} high priority`}
-        />
-        <Stat label="Roadmap progress" value={stats ? stats.pct : '—'} unit={stats ? '%' : ''} hint={stats ? `${stats.phasesDone} of ${stats.phasesTotal} milestones` : 'No roadmap yet'}>
-          {stats && <ProgressBar value={stats.pct} size="sm" className="mt-3" tone="ink" label="Roadmap progress" />}
-        </Stat>
-      </div>
-
-      <div className="mt-4 grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-        {/* Focus */}
-        <Card className="flex flex-col p-6">
-          {!roadmap ? (
-            <>
-              <p className="eyebrow">Next step</p>
-              <h2 className="mt-2 text-lg font-semibold tracking-tight">Turn your gaps into a plan</h2>
-              <p className="mt-1 max-w-md text-sm text-muted">
-                You have {analysis.gaps.length} skill gaps for {role.name}. Generate a roadmap ordered by prerequisites and sized to your schedule.
-              </p>
-              <div className="mt-auto pt-6">
-                <Button to="/roadmap" state={{ autoGenerate: true }} iconRight={ArrowRight}>
-                  Generate My Roadmap
-                </Button>
-              </div>
-            </>
-          ) : roadmapState === 'role-changed' ? (
-            <>
-              <p className="eyebrow">Roadmap</p>
-              <h2 className="mt-2 text-lg font-semibold tracking-tight">Your goal changed to {role.name}</h2>
-              <p className="mt-1 text-sm text-muted">Your current roadmap targets {roadmap.roleName}. Generate a new one to match.</p>
-              <div className="mt-auto pt-6">
-                <Button to="/roadmap" state={{ autoGenerate: true }} icon={RefreshCw}>
-                  Generate new roadmap
-                </Button>
-              </div>
-            </>
-          ) : focus ? (
-            <>
-              <div className="flex items-center justify-between gap-3">
-                <p className="eyebrow">Current focus · {formatWeeks(focus)}</p>
-                {roadmap.status === 'paused' && <span className="text-xs font-medium text-warning-700">Paused</span>}
-              </div>
-              <h2 className="mt-2 text-xl font-semibold tracking-tight">{focus.title}</h2>
-              <div className="mt-3 flex items-center gap-3">
-                <ProgressBar value={focusStats.pct} label="Current phase progress" />
-                <span className="tabular shrink-0 text-xs text-muted">
-                  {focusStats.total - focusStats.done} task{focusStats.total - focusStats.done === 1 ? '' : 's'} remaining
-                </span>
-              </div>
-              {nextTask && (
-                <div className="mt-5 rounded-lg border border-line bg-slate-50/70 px-4 py-3">
-                  <p className="text-xs text-muted">Next task</p>
-                  <p className="mt-0.5 text-sm font-medium text-ink">{nextTask.title}</p>
-                  <p className="mt-0.5 text-xs text-muted">~{nextTask.hours}h</p>
+      <div className="grid gap-4 lg:grid-cols-[1.15fr_1fr]">
+        {/* Readiness */}
+        <Card className="p-6">
+          <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
+            <ScoreRing value={analysis.readiness} tone={band.tone === 'muted' ? 'ink' : band.tone} label={`Career readiness ${analysis.readiness} out of 100`}>
+              <span className="text-3xl font-semibold tracking-tight text-ink">{analysis.readiness}</span>
+              <span className="text-xs text-muted">/ 100</span>
+            </ScoreRing>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-muted">Career Readiness</p>
+              <p className="mt-0.5 text-lg font-semibold text-ink">{band.label}</p>
+              <dl className="mt-3 grid grid-cols-3 gap-3 text-sm">
+                <div>
+                  <dt className="text-xs text-muted">Previous</dt>
+                  <dd className="tabular mt-0.5 font-semibold text-ink">{previous ?? '—'}</dd>
                 </div>
-              )}
-              <div className="mt-auto flex flex-wrap gap-2 pt-6">
-                <Button to={`/roadmap/${focus.id}`} iconRight={roadmap.status === 'paused' ? undefined : ArrowRight} icon={roadmap.status === 'paused' ? Play : undefined}>
-                  {roadmap.status === 'paused' ? 'Open roadmap' : 'Continue Roadmap'}
-                </Button>
-                {roadmapState === 'stale' && (
-                  <Button variant="secondary" to="/roadmap" state={{ autoGenerate: true }} icon={RefreshCw}>
-                    Update roadmap
+                <div>
+                  <dt className="text-xs text-muted">Current</dt>
+                  <dd className="tabular mt-0.5 font-semibold text-ink">{analysis.readiness}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-muted">Change</dt>
+                  <dd className={cx('tabular mt-0.5 font-semibold', readinessDelta > 0 ? 'text-success-700' : readinessDelta < 0 ? 'text-danger-700' : 'text-ink')}>
+                    {readinessDelta == null ? '—' : `${readinessDelta > 0 ? '+' : ''}${readinessDelta}`}
+                  </dd>
+                </div>
+              </dl>
+            </div>
+          </div>
+          <div className="mt-6 border-t border-line pt-4">
+            <p className="text-sm font-medium text-ink">{toNinety ? `What’s keeping you from 90+` : 'You’re above 90 — keep your skills sharp'}</p>
+            {toNinety > 0 && (
+              <ul className="mt-3 space-y-2">
+                {blockers.map((b) => (
+                  <li key={b.key}>
+                    <Link to={`/gap?skill=${b.skillId}`} className="group flex items-center gap-3 rounded-md px-1 py-1 text-sm hover:bg-slate-50">
+                      <PriorityBadge priority={b.priority} showLabel={false} />
+                      <span className="flex-1 truncate text-ink">{b.skillName}</span>
+                      <span className="tabular text-xs text-muted">
+                        {b.current}% → {b.required}%
+                      </span>
+                      <span className="tabular w-14 text-right text-xs font-semibold text-success-700">+{b.pointsAvailable} pts</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </Card>
+
+        {/* Skill overview */}
+        <Card>
+          <CardHeader title="Skill overview" description={`${analysis.counts.met} of ${analysis.items.length} required skills at target level`} action={<Button variant="link" to="/gap">Details</Button>} />
+          <CardBody>
+            <DistributionBar
+              segments={[
+                { label: 'Mastered', value: analysis.counts.strong, color: 'bg-success' },
+                { label: 'In progress', value: analysis.counts.improve, color: 'bg-warning' },
+                { label: 'Missing', value: analysis.counts.missing, color: 'bg-slate-300' },
+              ]}
+            />
+            <ul className="mt-5 space-y-3">
+              {keySkills.map((item) => (
+                <li key={item.key} className="grid grid-cols-[7.5rem_1fr_2.5rem] items-center gap-3 text-sm">
+                  <span className="truncate text-ink">{item.skillName}</span>
+                  <ProgressBar value={item.current} marker={item.required} size="sm" tone={item.gap ? 'accent' : 'success'} label={`${item.skillName} level`} />
+                  <span className="tabular text-right text-xs text-muted">{item.current}%</span>
+                </li>
+              ))}
+            </ul>
+          </CardBody>
+        </Card>
+      </div>
+
+      {/* Stats */}
+      <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+        <Stat label="Skills completed" value={analysis.counts.met} hint={`of ${analysis.items.length} required`} />
+        <Stat label="Skills remaining" value={analysis.gaps.length} hint={analysis.counts.critical ? `${analysis.counts.critical} critical` : 'none critical'} />
+        <Stat label="Roadmap progress" value={stats ? stats.pct : '—'} unit={stats ? '%' : ''} hint={stats ? `${stats.phasesDone}/${stats.phasesTotal} milestones` : 'No roadmap yet'} />
+        <Stat label="Projects completed" value={projectsDone} hint={<Link to="/projects" className="hover:text-ink">View projects →</Link>} />
+        <Stat label="Assessments passed" value={passedCount} hint={assessments.length ? `${assessments.length} taken` : <Link to="/assessments" className="hover:text-ink">Take one →</Link>} className="col-span-2 sm:col-span-1" />
+      </div>
+
+      <div className="mt-4 grid gap-4 lg:grid-cols-[1.15fr_1fr]">
+        {/* This week */}
+        <Card>
+          <CardHeader
+            title="This week"
+            icon={CalendarCheck}
+            description={roadmap && roadmapState !== 'role-changed' ? `Sized to your ${roadmap.settings.weeklyHours}h weekly budget` : undefined}
+            action={roadmap && <Button variant="link" to="/roadmap">Roadmap</Button>}
+          />
+          <CardBody>
+            {!roadmap || roadmapState === 'role-changed' ? (
+              <EmptyState
+                compact
+                icon={Route}
+                title={roadmap ? `Your goal changed to ${role.name}` : 'No plan for this week yet'}
+                description="Generate your roadmap to get a weekly action plan."
+                action={
+                  <Button to="/roadmap" state={{ autoGenerate: true }} icon={roadmap ? RefreshCw : undefined} iconRight={roadmap ? undefined : ArrowRight}>
+                    {roadmap ? 'Generate new roadmap' : 'Generate My Roadmap'}
                   </Button>
+                }
+              />
+            ) : roadmap.status === 'paused' ? (
+              <EmptyState compact title="Your roadmap is paused" description="Resume it to see this week’s plan." action={<Button to="/roadmap">Open roadmap</Button>} />
+            ) : weekItems.length ? (
+              <>
+                <WeekPlan items={weekItems} onToggleTask={actions.toggleTask} onToggleHabit={actions.toggleWeekCheck} />
+                {roadmapState === 'stale' && (
+                  <p className="mt-3 flex items-center gap-2 text-xs text-muted">
+                    <RefreshCw className="h-3.5 w-3.5" aria-hidden /> Your skills changed —{' '}
+                    <Link to="/roadmap" state={{ autoGenerate: true }} className="font-medium text-ink hover:underline">
+                      update your roadmap
+                    </Link>
+                  </p>
                 )}
+              </>
+            ) : (
+              <p className="text-sm text-muted">Every roadmap task is done. Re-run your analysis or pick a more senior goal.</p>
+            )}
+          </CardBody>
+        </Card>
+
+        <div className="space-y-4">
+          <Card>
+            <CardHeader title="Career readiness over time" action={<Button variant="link" to="/progress">Progress</Button>} />
+            <CardBody>
+              {trend.length >= 2 ? (
+                <LineChart points={trend} target={90} targetLabel="90 = job-ready" ariaLabel="Career readiness over time" format={(v) => `${v}/100`} />
+              ) : (
+                <p className="text-sm text-muted">Your trend appears after your next check-in, assessment or completed phase.</p>
+              )}
+            </CardBody>
+          </Card>
+          {stats && roadmapState !== 'role-changed' && (
+            <Card className="p-5">
+              <div className="flex items-baseline justify-between">
+                <p className="text-sm font-medium text-ink">Roadmap completion</p>
+                <Link to="/roadmap" className="inline-flex items-center gap-1 text-xs text-muted hover:text-ink">
+                  Open <ArrowUpRight className="h-3 w-3" aria-hidden />
+                </Link>
               </div>
-            </>
-          ) : (
-            <>
-              <p className="eyebrow">Roadmap complete</p>
-              <h2 className="mt-2 text-lg font-semibold tracking-tight">You finished every phase 🎉</h2>
-              <p className="mt-1 text-sm text-muted">Re-run your analysis to see your new readiness, or pick a more senior goal.</p>
-              <div className="mt-auto flex gap-2 pt-6">
-                <Button to="/analysis">View analysis</Button>
-                <Button variant="secondary" to="/careers">
-                  Explore careers
-                </Button>
-              </div>
-            </>
+              <DistributionBar
+                className="mt-3"
+                segments={[
+                  { label: 'Completed', value: stats.doneTasks, color: 'bg-success' },
+                  { label: 'Remaining', value: stats.totalTasks - stats.doneTasks, color: 'bg-slate-200' },
+                ]}
+              />
+            </Card>
           )}
-        </Card>
-
-        {/* Gaps */}
-        <Card>
-          <CardHeader title="Top skill gaps" action={<Button variant="link" to="/analysis">View all</Button>} />
-          <CardBody>
-            {analysis.gaps.length ? (
-              <ul className="space-y-3">
-                {analysis.gaps.slice(0, 5).map((gap) => (
-                  <li key={gap.key}>
-                    <div className="mb-1.5 flex items-center justify-between gap-2 text-sm">
-                      <span className="truncate font-medium text-ink">{gap.skillName}</span>
-                      <PriorityBadge priority={gap.priority} />
-                    </div>
-                    <ProgressBar value={gap.current} marker={gap.required} size="sm" label={`${gap.skillName} level`} />
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-sm text-muted">No gaps — you meet every requirement.</p>
-            )}
-          </CardBody>
-        </Card>
-      </div>
-
-      <div className="mt-4 grid gap-4 sm:grid-cols-3">
-        <Stat label="Learning streak" icon={Flame} value={streak} unit={streak === 1 ? ' day' : ' days'} hint={streak ? 'Keep it going today' : 'Complete a task to start one'} />
-        <Stat label="Hours learned" icon={Clock} value={hours} unit="h" hint={`${progress.hoursLog.length} sessions logged`} />
-        <Stat label="Skills improved" icon={TrendingUp} value={improved.length ? `+${improved.length}` : 0} hint={improved.length ? improved.slice(0, 2).map((s) => s.name).join(', ') : 'Check in after learning'} />
-      </div>
-
-      <div className="mt-4 grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader title="Up next" action={roadmap && <Button variant="link" to="/roadmap">Roadmap</Button>} />
-          <CardBody>
-            {stats?.upNext?.length ? (
-              <ul className="divide-y divide-line">
-                {stats.upNext.map((task) => (
-                  <li key={task.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
-                    <span className="min-w-0">
-                      <span className="block truncate text-ink">{task.title}</span>
-                      <span className="block text-xs text-muted">{task.phaseTitle}</span>
-                    </span>
-                    <span className="tabular shrink-0 text-xs text-muted">{task.hours}h</span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-sm text-muted">{roadmap ? 'Nothing left — great work.' : 'Generate a roadmap to see your next tasks.'}</p>
-            )}
-          </CardBody>
-        </Card>
-        <Card>
-          <CardHeader title="Recent activity" action={<Button variant="link" to="/progress">Progress</Button>} />
-          <CardBody>
-            <ActivityFeed items={progress.activity} limit={5} />
-          </CardBody>
-        </Card>
+        </div>
       </div>
     </div>
   );

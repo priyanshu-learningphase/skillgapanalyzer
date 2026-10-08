@@ -31,7 +31,7 @@ const GapChart = ({ items, limit = 8, onSelect }) => {
               onMouseLeave={() => setHover(null)}
               onFocus={() => setHover(item.key)}
               onBlur={() => setHover(null)}
-              className="group relative grid w-full grid-cols-[minmax(0,9rem)_1fr_auto] items-center gap-3 rounded-md px-2 py-2 text-left hover:bg-slate-50 sm:grid-cols-[minmax(0,11rem)_1fr_5.5rem]"
+              className="group relative grid w-full grid-cols-[minmax(0,7.5rem)_minmax(5rem,1fr)_3.5rem] items-center gap-3 rounded-md px-2 py-2 text-left hover:bg-slate-50 sm:grid-cols-[minmax(0,10rem)_minmax(6rem,1fr)_4rem]"
               aria-label={`${item.skillName}: ${item.current}% of ${item.required}% required, ${item.priority} priority`}
             >
               <span className="flex min-w-0 items-center gap-2">

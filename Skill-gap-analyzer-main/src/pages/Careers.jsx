@@ -13,6 +13,7 @@ import ProgressBar from '../components/ui/ProgressBar';
 import PriorityBadge from '../components/ui/PriorityBadge';
 import { ConfirmDialog } from '../components/ui/Overlay';
 import { roleIcon } from '../components/careers/roleIcons';
+import JobsTabs from '../components/careers/JobsTabs';
 import { useWorkspace } from '../context/WorkspaceContext';
 import { useToast } from '../context/ToastContext';
 import { ROLES, ROLE_MAP, requirementLabel } from '../data/roles';
@@ -69,8 +70,8 @@ const Careers = () => {
   return (
     <div>
       <PageHeader
-        eyebrow="Career paths"
-        title="Career Matches"
+        eyebrow="Jobs"
+        title="Role Matches"
         description={isOnboarded ? 'How your current skills match each role. Select one to see what you have and what’s missing.' : 'Explore what each role requires. Analyze your skills to see how well you match.'}
         actions={
           !isOnboarded && (
@@ -80,6 +81,7 @@ const Careers = () => {
           )
         }
       />
+      <JobsTabs />
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,21rem)_1fr]">
         {/* Match list */}

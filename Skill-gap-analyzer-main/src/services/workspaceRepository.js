@@ -8,7 +8,8 @@
  *      users/{uid}.career          career profile (+ legacy fields)
  *      skill_analysis/{autoId}     analysis snapshots (also used by admin analytics)
  *      roadmaps/{uid}              active roadmap
- *      progress/{uid}              completed tasks, hours, streak, activity
+ *      progress/{uid}              completed tasks, hours, streak, assessments, projects
+ *      insights/{uid}              resume, job description and GitHub analyses
  *  - localStorage (local mode, no account required)
  */
 
@@ -26,7 +27,7 @@ import {
   where,
 } from 'firebase/firestore';
 import { db, firebaseEnabled } from '../config/firebase';
-import { normalizeProgress } from '../lib/progress';
+import { normalizeInsights, normalizeProgress } from '../lib/progress';
 
 const MAX_ANALYSES = 30;
 
@@ -45,10 +46,11 @@ const toIso = (value) => {
 
 const firestoreRepository = {
   async load(uid) {
-    const [userSnap, roadmapSnap, progressSnap, analysesSnap] = await Promise.all([
+    const [userSnap, roadmapSnap, progressSnap, insightsSnap, analysesSnap] = await Promise.all([
       getDoc(doc(db, 'users', uid)),
       getDoc(doc(db, 'roadmaps', uid)),
       getDoc(doc(db, 'progress', uid)),
+      getDoc(doc(db, 'insights', uid)),
       // Filter only (no orderBy) so no composite index is required.
       getDocs(query(collection(db, 'skill_analysis'), where('userId', '==', uid))),
     ]);
@@ -63,6 +65,7 @@ const firestoreRepository = {
       analyses,
       roadmap: roadmapSnap.exists() ? roadmapSnap.data().roadmap || null : null,
       progress: normalizeProgress(progressSnap.exists() ? progressSnap.data() : null),
+      insights: normalizeInsights(insightsSnap.exists() ? insightsSnap.data() : null),
     };
   },
 
@@ -100,12 +103,17 @@ const firestoreRepository = {
     await setDoc(doc(db, 'progress', uid), { ...clean(progress), updatedAt: serverTimestamp() });
   },
 
+  async saveInsights(uid, insights) {
+    await setDoc(doc(db, 'insights', uid), { ...clean(insights), updatedAt: serverTimestamp() });
+  },
+
   async reset(uid) {
     const analyses = await getDocs(query(collection(db, 'skill_analysis'), where('userId', '==', uid)));
     await Promise.all([
       ...analyses.docs.map((d) => deleteDoc(d.ref)),
       deleteDoc(doc(db, 'roadmaps', uid)),
       deleteDoc(doc(db, 'progress', uid)),
+      deleteDoc(doc(db, 'insights', uid)),
       setDoc(doc(db, 'users', uid), { career: deleteField(), career_interest: '', skills: [] }, { merge: true }),
     ]);
   },
@@ -145,6 +153,7 @@ const localRepository = {
       analyses: data.analyses || [],
       roadmap: data.roadmap || null,
       progress: normalizeProgress(data.progress),
+      insights: normalizeInsights(data.insights),
     };
   },
   async saveCareer(uid, career) {
@@ -165,6 +174,9 @@ const localRepository = {
   },
   async saveProgress(uid, progress) {
     writeLocal(uid, { progress: clean(progress) });
+  },
+  async saveInsights(uid, insights) {
+    writeLocal(uid, { insights: clean(insights) });
   },
   async reset(uid) {
     try {

@@ -85,8 +85,16 @@ export default {
           from: { backgroundPosition: '200% 0' },
           to: { backgroundPosition: '-200% 0' },
         },
+        grow: {
+          from: { width: '0' },
+        },
+        ring: {
+          from: { strokeDashoffset: 'var(--ring-from)' },
+        },
       },
       animation: {
+        grow: 'grow 700ms ease-out',
+        ring: 'ring 900ms ease-out',
         'fade-in': 'fade-in 180ms ease-out both',
         'slide-in-right': 'slide-in-right 220ms cubic-bezier(0.32, 0.72, 0, 1) both',
         'slide-in-left': 'slide-in-left 220ms cubic-bezier(0.32, 0.72, 0, 1) both',

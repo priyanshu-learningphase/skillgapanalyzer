@@ -10,7 +10,7 @@
 
 import { searchUrlFor, slugify } from '../data/skills.js';
 
-export const RESOURCE_TYPES = ['docs', 'video', 'course', 'article', 'practice', 'project'];
+export const RESOURCE_TYPES = ['docs', 'video', 'book', 'course', 'article', 'practice', 'project'];
 
 const LIMITS = {
   title: 80,

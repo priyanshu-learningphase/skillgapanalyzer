@@ -16,6 +16,7 @@ import { useWorkspace } from '../context/WorkspaceContext';
 import { useToast } from '../context/ToastContext';
 import { getAiStatus } from '../services/aiService';
 import { ROLES } from '../data/roles';
+import CompanyPicker from '../components/careers/CompanyPicker';
 import { BRANCHES, DAILY_TIME_OPTIONS, EXPERIENCE_LEVELS, TIMELINE_OPTIONS, YEARS } from '../data/options';
 
 const Section = ({ title, description, children }) => (
@@ -37,6 +38,7 @@ const Settings = () => {
   const [profile, setProfile] = useState({ name: userProfile?.name || '', branch: userProfile?.branch || '', year: userProfile?.year || '' });
   const [prefs, setPrefs] = useState({ level: career?.level, dailyMinutes: career?.dailyMinutes, timelineWeeks: career?.timelineWeeks ?? null });
   const [targetId, setTargetId] = useState(career?.targetRoleId || '');
+  const [company, setCompany] = useState(career?.targetCompany || null);
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPrefs, setSavingPrefs] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
@@ -51,6 +53,7 @@ const Settings = () => {
   useEffect(() => {
     setPrefs({ level: career?.level, dailyMinutes: career?.dailyMinutes, timelineWeeks: career?.timelineWeeks ?? null });
     setTargetId(career?.targetRoleId || '');
+    setCompany(career?.targetCompany || null);
   }, [career]);
 
   const prefsChanged = career && (prefs.level !== career.level || prefs.dailyMinutes !== career.dailyMinutes || prefs.timelineWeeks !== (career.timelineWeeks ?? null));
@@ -99,11 +102,14 @@ const Settings = () => {
     }
   };
 
-  const targetName = ROLES.find((r) => r.id === targetId)?.name || (targetId === 'custom' ? career?.customRole?.name : '');
+  const roleName = ROLES.find((r) => r.id === targetId)?.name || (targetId === 'custom' ? career?.customRole?.name : '');
+  const targetName = company ? `${roleName} at ${company.name}` : roleName;
+  const goalChanged =
+    career && (targetId !== career.targetRoleId || (company?.id || null) !== (career.targetCompany?.id || null) || (company?.name || null) !== (career.targetCompany?.name || null));
 
   return (
     <div>
-      <PageHeader eyebrow="Settings" title="Settings" description="Manage your profile, goal and how your roadmap is planned." />
+      <PageHeader title="Profile & settings" description="Your details, career goal, target company and how your roadmap is planned." />
 
       <div className="space-y-4">
         <Section title="Profile" description={isLocalMode ? 'Stored in this browser.' : currentUser?.email}>
@@ -148,7 +154,7 @@ const Settings = () => {
           </form>
         </Section>
 
-        <Section title="Career goal" description="Changing your goal re-runs your analysis. Skills and progress are kept.">
+        <Section title="Career goal" description="Your target role and company shape every analysis and recommendation. Skills and progress are kept when you change them.">
           {isOnboarded ? (
             <div className="max-w-lg space-y-4">
               <div>
@@ -164,9 +170,13 @@ const Settings = () => {
                   {career.customRole && <option value="custom">{career.customRole.name} (custom)</option>}
                 </select>
               </div>
-              <div className="flex flex-wrap gap-2">
-                <Button onClick={() => setConfirmTarget(true)} disabled={targetId === career.targetRoleId}>
-                  Change goal
+              <div>
+                <p className="label">Target company</p>
+                <CompanyPicker value={company} onChange={setCompany} />
+              </div>
+              <div className="flex flex-wrap gap-2 border-t border-line pt-4">
+                <Button onClick={() => setConfirmTarget(true)} disabled={!goalChanged}>
+                  Save goal
                 </Button>
                 <Button variant="secondary" icon={ScanSearch} to="/onboarding">
                   Re-run full analysis
@@ -290,16 +300,16 @@ const Settings = () => {
         onClose={() => setConfirmTarget(false)}
         onConfirm={async () => {
           const custom = targetId === 'custom' ? career.customRole : null;
-          const next = await actions.setTargetRole(targetId, custom);
+          const next = await actions.setTargetRole(targetId, custom, company);
           setConfirmTarget(false);
           toast.success(`Your goal is now ${targetName}`, {
-            description: next ? `Readiness: ${next.readiness}%` : undefined,
+            description: next ? `Readiness: ${next.readiness}/100` : undefined,
             action: { label: 'Generate roadmap', onClick: () => navigate('/roadmap', { state: { autoGenerate: true } }) },
           });
         }}
-        title={`Change your goal to ${targetName}?`}
-        description="We’ll re-run your analysis for the new role. Your current roadmap will be flagged so you can generate a new one."
-        confirmLabel="Change goal"
+        title={`Set your goal to ${targetName}?`}
+        description="We’ll re-run your analysis for this target. If the role changed, your current roadmap will be flagged so you can generate a new one."
+        confirmLabel="Save goal"
       />
     </div>
   );

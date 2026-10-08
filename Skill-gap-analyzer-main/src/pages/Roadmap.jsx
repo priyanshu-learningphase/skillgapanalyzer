@@ -60,7 +60,7 @@ const Roadmap = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const toast = useToast();
-  const { career, role, analysis, roadmap, roadmapState, stats, progress, actions } = useWorkspace();
+  const { career, role, analysis, roadmap, roadmapState, stats, progress, latestAssessments, actions } = useWorkspace();
 
   const [gen, setGen] = useState({ running: false, stage: null, error: null });
   const [aiEnabled, setAiEnabled] = useState(false);
@@ -126,7 +126,7 @@ const Roadmap = () => {
   if (!analysis) {
     return (
       <div>
-        <PageHeader eyebrow="Roadmap" title="Your Roadmap" />
+        <PageHeader title="Your Roadmap" />
         <NoAnalysisState title="No roadmap yet" description="Analyze your skills first to generate a personalized roadmap." />
       </div>
     );
@@ -142,7 +142,7 @@ const Roadmap = () => {
 
   const header = (
     <PageHeader
-      eyebrow={roadmap ? `${roadmap.totalWeeks}-week ${roadmap.roleName} roadmap` : 'Roadmap'}
+      eyebrow={roadmap ? `${roadmap.totalWeeks}-week ${roadmap.roleName}${role?.company ? ` · ${role.company.name}` : ''} roadmap` : undefined}
       title="Your Roadmap"
       description={roadmap ? fitText(roadmap) : `A plan to close your ${role.name} skill gaps, built around your schedule.`}
       actions={
@@ -283,7 +283,13 @@ const Roadmap = () => {
               </Button>
             }
           >
-            Recalculate to skip what you now know, re-prioritise gaps and fit your schedule. Your progress is kept.
+            {(() => {
+              const recent = Object.values(latestAssessments).filter((a) => a.at > roadmap.updatedAt);
+              if (!recent.length) return 'Recalculate to skip what you now know, re-prioritise gaps and fit your schedule. Your progress is kept.';
+              return recent
+                .map((a) => `${a.name} ${a.pct}% → ${a.pct < 60 ? 'repeat fundamentals' : a.pct >= 85 ? 'skip beginner content' : 'continue'}`)
+                .join(' · ') + '. Update to apply — your progress is kept.';
+            })()}
           </Notice>
         )}
         {paused && (
@@ -321,7 +327,7 @@ const Roadmap = () => {
             icon={CalendarClock}
             title={roadmap.fit.status === 'over' ? 'This plan is longer than your timeline' : 'Some skills were deferred to fit your timeline'}
             action={
-              <Button size="sm" variant="secondary" to="/settings">
+              <Button size="sm" variant="secondary" to="/profile">
                 Adjust schedule
               </Button>
             }
@@ -439,7 +445,7 @@ const Roadmap = () => {
               <Row label="Daily time" value={dailyTimeLabel(roadmap.settings.dailyMinutes)} />
               <Row label="Timeline" value={timelineLabel(roadmap.settings.timelineWeeks)} />
               <Row label="Generated" value={relativeTime(roadmap.updatedAt)} />
-              <Button variant="link" to="/settings" className="pt-1">
+              <Button variant="link" to="/profile" className="pt-1">
                 Change preferences
               </Button>
             </CardBody>

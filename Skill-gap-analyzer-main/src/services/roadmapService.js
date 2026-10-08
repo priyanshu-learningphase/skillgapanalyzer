@@ -22,11 +22,11 @@ export const GENERATION_STAGES = [
 
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-export const generateRoadmap = async ({ role, profile, analysis, carryOver = [], useAi = true, onStage, signal }) => {
+export const generateRoadmap = async ({ role, profile, analysis, carryOver = [], signals = {}, useAi = true, onStage, signal }) => {
   onStage?.('analyze');
   await pause(250);
   onStage?.('order');
-  const planned = planRoadmap({ role, profile, analysis, carryOver });
+  const planned = planRoadmap({ role, profile, analysis, carryOver, signals });
   await pause(250);
   onStage?.('schedule');
   await pause(200);

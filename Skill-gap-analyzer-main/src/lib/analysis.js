@@ -10,13 +10,29 @@
 import { getSkill } from '../data/skills.js';
 import { IMPORTANCE, ROLES, requirementLabel } from '../data/roles.js';
 
-export const PRIORITY_ORDER = ['critical', 'high', 'medium', 'low'];
+export const PRIORITY_ORDER = ['critical', 'important', 'optional'];
 
 export const PRIORITY_META = {
-  critical: { label: 'Critical', rank: 0 },
-  high: { label: 'High', rank: 1 },
-  medium: { label: 'Medium', rank: 2 },
-  low: { label: 'Low', rank: 3 },
+  critical: { label: 'Critical', rank: 0, description: 'Directly affects employability for this role' },
+  important: { label: 'Important', rank: 1, description: 'Makes you noticeably more competitive' },
+  optional: { label: 'Optional', rank: 2, description: 'Nice to have' },
+};
+
+/** Where a skill stands against the role target. */
+export const STANDING_META = {
+  strong: { label: 'Strong', description: 'At or near the target level' },
+  improve: { label: 'Needs improvement', description: 'Some experience, below target' },
+  missing: { label: 'Missing', description: 'Little or no experience yet' },
+};
+
+/** Below this level a skill counts as missing rather than in progress. */
+const MISSING_BELOW = 15;
+
+export const levelName = (value) => {
+  if (value >= 80) return 'Advanced';
+  if (value >= 50) return 'Intermediate';
+  if (value > 0) return 'Beginner';
+  return 'None';
 };
 
 /** Inferred levels decay per prerequisite hop and never exceed this. */
@@ -137,22 +153,27 @@ export const resolveRequirementSkills = (role, levels) => {
   return resolved;
 };
 
+/**
+ * Critical: the role depends on it and the gap is meaningful.
+ * Important: improves competitiveness. Optional: small gaps or nice-to-haves.
+ */
 export const priorityFor = (gap, importance) => {
   if (gap <= 0) return null;
+  // Within a few points of the target is a polish item, whatever the skill.
+  if (gap < 10) return 'optional';
   const weight = IMPORTANCE[importance]?.weight ?? 2;
-  if (weight >= 3 && gap >= 45) return 'critical';
-  if ((weight >= 3 && gap >= 25) || (weight === 2 && gap >= 50) || (weight === 4 && gap >= 15)) return 'high';
-  if (gap >= 20) return 'medium';
-  return 'low';
+  if ((weight === 4 && gap >= 15) || (weight === 3 && gap >= 45)) return 'critical';
+  if (weight === 4 || (weight >= 2 && gap >= 15)) return 'important';
+  return 'optional';
 };
 
-/** Default roadmap inclusion: every gap except LOW, unless the user overrode it. */
+/** Default roadmap inclusion: Critical and Important gaps, unless the user overrode it. */
 export const isIncludedInRoadmap = (item, overrides = {}) => {
   if (!item.priority) return false;
   const override = overrides[item.key];
   if (override === 'include') return true;
   if (override === 'exclude') return false;
-  return item.priority !== 'low';
+  return item.priority !== 'optional';
 };
 
 export const suggestedAction = (item) => {
@@ -186,9 +207,17 @@ export const analyzeRole = (role, userSkills = [], precomputedLevels) => {
     weightedCoverage += coverage * weight;
     totalWeight += weight;
 
+    const standing = current > 0 && current >= required * STRENGTH_RATIO ? 'strong' : current < MISSING_BELOW ? 'missing' : 'improve';
+
     return {
       key: requirement.key,
       label: requirementLabel(requirement),
+      standing,
+      currentLabel: levelName(current),
+      requiredLabel: levelName(required),
+      companyAdjusted: requirement.companyAdjusted || null,
+      companyAdded: requirement.companyAdded || null,
+      baseLevel: requirement.baseLevel ?? null,
       skillId,
       skillName: skill?.name || skillId,
       category: skill?.category || 'Custom',
@@ -224,11 +253,21 @@ export const analyzeRole = (role, userSkills = [], precomputedLevels) => {
 
   const counts = { met: items.length - gaps.length, gaps: gaps.length };
   for (const priority of PRIORITY_ORDER) counts[priority] = gaps.filter((g) => g.priority === priority).length;
+  for (const standing of Object.keys(STANDING_META)) counts[standing] = items.filter((i) => i.standing === standing).length;
+
+  // Readiness points each gap is worth if closed — what's holding the score back.
+  for (const item of items) {
+    item.pointsAvailable = totalWeight ? Math.round(((item.weight * (1 - item.coverage)) / totalWeight) * 1000) / 10 : 0;
+  }
+  const blockers = [...gaps].sort((a, b) => b.pointsAvailable - a.pointsAvailable);
 
   return {
     roleId: role.id,
     roleName: role.name,
+    company: role.company || null,
     readiness,
+    skillMatch: items.length ? Math.round(((items.length - gaps.length) / items.length) * 100) : 0,
+    blockers,
     items,
     strengths,
     gaps,
@@ -256,6 +295,8 @@ export const rankCareerMatches = (userSkills = [], extraRoles = []) => {
 export const toAnalysisSnapshot = (analysis, reason = 'analysis') => ({
   career_role: analysis.roleName,
   role_id: analysis.roleId,
+  company_id: analysis.company?.id || null,
+  company_name: analysis.company?.name || null,
   readiness_score: analysis.readiness,
   matched_skills: analysis.strengths.map((item) => item.skillName),
   missing_skills: analysis.gaps.map((item) => item.skillName),

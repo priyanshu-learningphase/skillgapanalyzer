@@ -17,11 +17,20 @@ import { analyzeRole, rankCareerMatches, toAnalysisSnapshot } from '../lib/analy
 import { describeDiff, diffRoadmaps, isEmptyDiff, preserveCompletedTasks, roadmapInputsKey, roadmapStats } from '../lib/roadmap';
 import { buildCustomRole, resolveLegacyRoleId, resolveRole } from '../data/roles';
 import { findSkillByName, getSkill, makeCustomSkill } from '../data/skills';
-import { dayKey, emptyProgress, makeActivity, markActive, pushActivity } from '../lib/progress';
+import { dayKey, emptyInsights, emptyProgress, makeActivity, markActive, pushActivity } from '../lib/progress';
+import { latestBySkill, levelAfterAssessment, passed, recommendationFor } from '../lib/assessment';
+import { jobToCustomRole } from '../lib/jobDescription';
+import { weekKey } from '../lib/weekPlan';
+import { PROJECT_MAP } from '../data/projects';
+import { genericProjectFor } from '../lib/projects';
+import { hasAssessment } from '../data/assessments/index';
 
 const WorkspaceContext = createContext(null);
 
-const initialState = { status: 'loading', error: null, career: null, analyses: [], roadmap: null, progress: emptyProgress() };
+const initialState = { status: 'loading', error: null, career: null, analyses: [], roadmap: null, progress: emptyProgress(), insights: emptyInsights() };
+
+/** Projects can be catalog entries or generated per skill. */
+const projectById = (id) => PROJECT_MAP[id] || (id?.startsWith('skill-') ? genericProjectFor(id.slice(6)) : null);
 
 const friendlyError = (error) => {
   const message = error?.message || '';
@@ -93,6 +102,7 @@ export const WorkspaceProvider = ({ children }) => {
             if (key === 'career') return repo.saveCareer(uid, s.career);
             if (key === 'roadmap') return repo.saveRoadmap(uid, s.roadmap);
             if (key === 'progress') return repo.saveProgress(uid, s.progress);
+            if (key === 'insights') return repo.saveInsights(uid, s.insights);
             return null;
           }),
         );
@@ -115,7 +125,7 @@ export const WorkspaceProvider = ({ children }) => {
   const commit = useCallback(
     (patch) => {
       setAll({ ...stateRef.current, ...patch });
-      return persist(Object.keys(patch).filter((k) => ['career', 'roadmap', 'progress'].includes(k)));
+      return persist(Object.keys(patch).filter((k) => ['career', 'roadmap', 'progress', 'insights'].includes(k)));
     },
     [persist, setAll],
   );
@@ -131,7 +141,7 @@ export const WorkspaceProvider = ({ children }) => {
       let career = data.career;
       const migrated = !career && migrateLegacy(data.legacy);
       if (migrated) career = migrated;
-      setAll({ status: 'ready', error: null, career, analyses: data.analyses, roadmap: data.roadmap, progress: data.progress });
+      setAll({ status: 'ready', error: null, career, analyses: data.analyses, roadmap: data.roadmap, progress: data.progress, insights: data.insights });
       if (migrated) persist(['career']);
     } catch (error) {
       console.error('Workspace load failed', error);
@@ -168,6 +178,7 @@ export const WorkspaceProvider = ({ children }) => {
       const career = {
         targetRoleId: data.targetRoleId,
         customRole: data.targetRoleId === 'custom' ? data.customRole : null,
+        targetCompany: data.targetCompany === undefined ? previous?.targetCompany || null : data.targetCompany,
         level: data.level,
         skills: data.skills,
         dailyMinutes: data.dailyMinutes,
@@ -216,25 +227,173 @@ export const WorkspaceProvider = ({ children }) => {
         source === 'assessment'
           ? `Skill check-in: ${skillName} ${from}% → ${level}%`
           : `Set ${skillName} to ${level}%`;
+      const assessTask = `${skillId}:assess`;
+      const { progress, roadmap } = stateRef.current;
+      if (source === 'assessment' && !hasAssessment(skillId) && !progress.completedTasks[assessTask] && roadmap?.phases.some((p) => p.tasks.some((t) => t.id === assessTask))) {
+        stateRef.current = { ...stateRef.current, progress: { ...progress, completedTasks: { ...progress.completedTasks, [assessTask]: new Date().toISOString() } } };
+      }
       return updateSkills(skills, { source, message });
     },
     [updateSkills],
   );
 
   const setTargetRole = useCallback(
-    async (roleId, customRole = null) => {
+    async (roleId, customRole = null, company) => {
       const { career, progress } = stateRef.current;
       const nextCareer = {
         ...career,
         targetRoleId: roleId,
         customRole: roleId === 'custom' ? customRole : null,
+        targetCompany: company === undefined ? career.targetCompany || null : company,
         roadmapOverrides: career.targetRoleId === roleId ? career.roadmapOverrides : {},
       };
       const role = resolveRole(nextCareer);
-      await commit({ career: nextCareer, progress: withActivity(progress, 'target', `Changed your goal to ${role?.name || 'a new role'}`) });
+      const label = role?.company ? `${role.name} at ${role.company.name}` : role?.name || 'a new role';
+      await commit({ career: nextCareer, progress: withActivity(progress, 'target', `Changed your goal to ${label}`) });
       return recordAnalysis(nextCareer, 'target-changed');
     },
     [commit, recordAnalysis],
+  );
+
+  /** Add skills found by the resume or GitHub analyzers. Never lowers a level you set. */
+  const importSkills = useCallback(
+    async (incoming, { source = 'import', label = 'your resume' } = {}) => {
+      const { career } = stateRef.current;
+      const byId = new Map(career.skills.map((s) => [s.id, s]));
+      let added = 0;
+      for (const skill of incoming) {
+        if (byId.has(skill.id)) continue;
+        byId.set(skill.id, { id: skill.id, name: skill.name, level: skill.level });
+        added += 1;
+      }
+      if (!added) return { added: 0, analysis: null };
+      const analysis = await updateSkills([...byId.values()], { source: 'manual', message: `Added ${added} skill${added === 1 ? '' : 's'} from ${label}` });
+      return { added, analysis, source };
+    },
+    [updateSkills],
+  );
+
+  const saveInsight = useCallback(
+    (key, value) => commit({ insights: { ...stateRef.current.insights, [key]: value } }),
+    [commit],
+  );
+
+  const saveJob = useCallback(
+    (job) => {
+      const { insights, progress } = stateRef.current;
+      const jobs = [job, ...(insights.jobs || []).filter((j) => j.id !== job.id)].slice(0, 10);
+      return commit({ insights: { ...insights, jobs }, progress: withActivity(progress, 'job', `Analysed a job description: ${job.parsed.title}`) });
+    },
+    [commit],
+  );
+
+  const removeJob = useCallback(
+    (id) => {
+      const { insights } = stateRef.current;
+      return commit({ insights: { ...insights, jobs: (insights.jobs || []).filter((j) => j.id !== id) } });
+    },
+    [commit],
+  );
+
+  /** Make a pasted job the target, so analysis and the roadmap aim at it. */
+  const targetJob = useCallback((job) => setTargetRole('custom', jobToCustomRole(job.parsed), null), [setTargetRole]);
+
+  const submitAssessment = useCallback(
+    async ({ skillId, result }) => {
+      const { career, progress, roadmap } = stateRef.current;
+      const role = resolveRole(career);
+      const levels = role ? analyzeRole(role, career.skills).levels : {};
+      const skillName = getSkill(skillId)?.name || skillId;
+      const before = levels[skillId]?.level ?? career.skills.find((s) => s.id === skillId)?.level ?? 0;
+      const after = levelAfterAssessment(before, result.pct);
+      const now = new Date().toISOString();
+      const entry = { id: newId('as'), skillId, name: skillName, correct: result.correct, total: result.total, pct: result.pct, before, after, at: now };
+
+      const completedTasks = { ...progress.completedTasks };
+      const hoursLog = [...progress.hoursLog];
+      const assessTask = `${skillId}:assess`;
+      if (passed(result.pct) && !completedTasks[assessTask] && roadmap?.phases.some((p) => p.tasks.some((t) => t.id === assessTask))) {
+        completedTasks[assessTask] = now;
+        hoursLog.push({ id: newId('h'), date: dayKey(), hours: 0.5, taskId: assessTask, skillId, source: 'task' });
+      }
+      const existing = career.skills.find((s) => s.id === skillId);
+      const skills = existing
+        ? career.skills.map((s) => (s.id === skillId ? { ...s, level: after } : s))
+        : [...career.skills, { id: skillId, name: skillName, level: after }];
+      const changes = skillChanges(career.skills, skills, 'quiz');
+      let next = markActive({ ...progress, completedTasks, hoursLog, assessments: [entry, ...progress.assessments].slice(0, 100), skillHistory: [...progress.skillHistory, ...changes] });
+      next = withActivity(next, 'assessment', `${skillName} assessment: ${result.correct}/${result.total} (${result.pct}%) — level ${before}% → ${after}%`);
+      const nextCareer = { ...career, skills };
+      await commit({ career: nextCareer, progress: next });
+      await recordAnalysis(nextCareer, 'assessment');
+      return { entry, recommendation: recommendationFor(result.pct, skillName) };
+    },
+    [commit, recordAnalysis],
+  );
+
+  /** Track a project; completing one is evidence that raises its main skills. */
+  const setProjectStatus = useCallback(
+    async (projectId, status) => {
+      const { career, progress, roadmap } = stateRef.current;
+      const project = projectById(projectId);
+      if (!project) return null;
+      const now = new Date().toISOString();
+      const projects = { ...progress.projects };
+      if (status) projects[projectId] = { status, at: now, title: project.title };
+      else delete projects[projectId];
+
+      let next = { ...progress, projects };
+      let nextCareer = career;
+      let changes = [];
+      if (status === 'completed') {
+        const completedTasks = { ...next.completedTasks };
+        for (const phase of roadmap?.phases || []) {
+          for (const task of phase.tasks) if (task.projectId === projectId && !completedTasks[task.id]) completedTasks[task.id] = now;
+        }
+        let skills = career.skills;
+        for (const id of project.primary) {
+          const current = skills.find((s) => s.id === id);
+          const level = current?.level ?? 0;
+          const raised = Math.min(85, Math.max(level, level + 10, 40));
+          if (raised <= level) continue;
+          skills = current ? skills.map((s) => (s.id === id ? { ...s, level: raised } : s)) : [...skills, { id, name: getSkill(id)?.name || id, level: raised }];
+        }
+        changes = skillChanges(career.skills, skills, 'project');
+        nextCareer = { ...career, skills };
+        next = markActive({ ...next, completedTasks, skillHistory: [...next.skillHistory, ...changes] });
+        next = withActivity(next, 'project', `Completed project: ${project.title}${changes.length ? ` — ${changes.map((c) => `${c.name} → ${c.to}%`).join(', ')}` : ''}`);
+      } else if (status === 'started') {
+        next = withActivity(next, 'project', `Started project: ${project.title}`);
+      }
+      await commit(nextCareer === career ? { progress: next } : { progress: next, career: nextCareer });
+      if (changes.length) await recordAnalysis(nextCareer, 'project-completed');
+      return { changes };
+    },
+    [commit, recordAnalysis],
+  );
+
+  const toggleInterviewPracticed = useCallback(
+    (questionId) => {
+      const { progress } = stateRef.current;
+      const practiced = { ...progress.interview.practiced };
+      if (practiced[questionId]) delete practiced[questionId];
+      else practiced[questionId] = new Date().toISOString();
+      return commit({ progress: { ...progress, interview: { ...progress.interview, practiced } } });
+    },
+    [commit],
+  );
+
+  const toggleWeekCheck = useCallback(
+    (itemId) => {
+      const { progress } = stateRef.current;
+      const key = weekKey();
+      const week = { ...(progress.weekChecks?.[key] || {}) };
+      week[itemId] = !week[itemId];
+      // Keep only the last few weeks.
+      const weekChecks = Object.fromEntries(Object.entries({ ...(progress.weekChecks || {}), [key]: week }).sort(([a], [b]) => b.localeCompare(a)).slice(0, 6));
+      return commit({ progress: markActive({ ...progress, weekChecks }) });
+    },
+    [commit],
   );
 
   const updatePreferences = useCallback(
@@ -263,7 +422,8 @@ export const WorkspaceProvider = ({ children }) => {
       const carryOver = (previous?.phases || []).filter(
         (phase) => phase.tasks.length && phase.tasks.every((task) => progress.completedTasks[task.id]),
       );
-      const result = await runGeneration({ role, profile: career, analysis, carryOver, useAi, onStage });
+      const signals = { assessments: latestBySkill(progress.assessments) };
+      const result = await runGeneration({ role, profile: career, analysis, carryOver, signals, useAi, onStage });
       const planned = preserveCompletedTasks(previous, result.roadmap, progress.completedTasks);
       const diff = previous ? diffRoadmaps(previous, planned) : null;
       const now = new Date().toISOString();
@@ -416,7 +576,9 @@ export const WorkspaceProvider = ({ children }) => {
 
   // ── Derived state ────────────────────────────────────────────────────────
 
-  const { career, roadmap, progress, analyses } = state;
+  const { career, roadmap, progress, analyses, insights } = state;
+  const latestAssessments = useMemo(() => latestBySkill(progress.assessments), [progress.assessments]);
+  const signals = useMemo(() => ({ assessments: latestAssessments }), [latestAssessments]);
   const role = useMemo(() => resolveRole(career), [career]);
   const analysis = useMemo(
     () => (role && (career.skills?.length || career.onboardedAt) ? analyzeRole(role, career.skills || []) : null),
@@ -432,12 +594,12 @@ export const WorkspaceProvider = ({ children }) => {
   const roadmapState = useMemo(() => {
     if (!roadmap) return 'none';
     if (!career || roadmap.roleId !== career.targetRoleId) return 'role-changed';
-    if (roadmap.inputsKey !== roadmapInputsKey(career)) return 'stale';
+    if (roadmap.inputsKey !== roadmapInputsKey(career, signals)) return 'stale';
     return 'current';
-  }, [roadmap, career]);
+  }, [roadmap, career, signals]);
 
   const readinessHistory = useMemo(
-    () => (analysis ? analyses.filter((a) => a.role_id === analysis.roleId).slice().reverse() : []),
+    () => (analysis ? analyses.filter((a) => a.role_id === analysis.roleId && (a.company_id || null) === (analysis.company?.id || null)).slice().reverse() : []),
     [analyses, analysis],
   );
 
@@ -466,12 +628,24 @@ export const WorkspaceProvider = ({ children }) => {
       roadmapState,
       stats,
       progress,
+      insights,
+      signals,
+      latestAssessments,
       isOnboarded: Boolean(analysis),
       actions: {
         completeOnboarding,
         updateSkills,
         setSkillLevel,
         setTargetRole,
+        importSkills,
+        saveInsight,
+        saveJob,
+        removeJob,
+        targetJob,
+        submitAssessment,
+        setProjectStatus,
+        toggleInterviewPracticed,
+        toggleWeekCheck,
         updatePreferences,
         toggleRoadmapSkill,
         generateRoadmap,
@@ -486,9 +660,10 @@ export const WorkspaceProvider = ({ children }) => {
     }),
     [
       state.status, state.error, load, syncStatus, career, role, analysis, analyses, readinessHistory, readinessDelta,
-      matches, roadmap, roadmapState, stats, progress, completeOnboarding, updateSkills, setSkillLevel, setTargetRole,
-      updatePreferences, toggleRoadmapSkill, generateRoadmap, toggleTask, completePhase, logHours, removeHoursEntry,
-      setRoadmapStatus, markActivitySeen, resetWorkspace,
+      matches, roadmap, roadmapState, stats, progress, insights, signals, latestAssessments, completeOnboarding, updateSkills,
+      setSkillLevel, setTargetRole, importSkills, saveInsight, saveJob, removeJob, targetJob, submitAssessment,
+      setProjectStatus, toggleInterviewPracticed, toggleWeekCheck, updatePreferences, toggleRoadmapSkill, generateRoadmap,
+      toggleTask, completePhase, logHours, removeHoursEntry, setRoadmapStatus, markActivitySeen, resetWorkspace,
     ],
   );
 

@@ -34,7 +34,12 @@ const projectById = (id) => PROJECT_MAP[id] || (id?.startsWith('skill-') ? gener
 
 const friendlyError = (error) => {
   const message = error?.message || '';
-  if (error?.code === 'permission-denied') return 'You don’t have permission to access this data.';
+  if (error?.code === 'permission-denied') {
+    return 'Firestore denied access to your data. The project’s security rules may be out of date — deploy firestore.rules from this repo.';
+  }
+  if (/database .*does not exist/i.test(message)) {
+    return 'This Firebase project has no Firestore database yet. Create one in the Firebase console (Build → Firestore Database).';
+  }
   if (error?.code === 'unavailable' || /network|offline|failed to fetch/i.test(message)) {
     return 'You appear to be offline. Check your connection and try again.';
   }

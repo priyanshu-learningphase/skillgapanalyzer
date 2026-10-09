@@ -1,6 +1,5 @@
-import { Check, HardDrive } from 'lucide-react';
+import { Check } from 'lucide-react';
 import Logo from '../layout/Logo';
-import Button from '../ui/Button';
 
 const POINTS = [
   'A readiness score for your target role',
@@ -35,25 +34,6 @@ const AuthLayout = ({ title, subtitle, children }) => (
         </ul>
       </div>
     </div>
-  </div>
-);
-
-/** Shown on auth pages when Firebase isn't configured. */
-export const LocalModeNotice = ({ next = '/dashboard' }) => (
-  <div className="card p-5">
-    <div className="flex items-start gap-3">
-      <HardDrive className="mt-0.5 h-4 w-4 text-muted" aria-hidden />
-      <div className="text-sm">
-        <p className="font-medium text-ink">Accounts aren’t enabled on this deployment</p>
-        <p className="mt-1 text-muted">
-          You can use every feature without signing in — your profile, roadmap and progress are saved in this browser. Add Firebase
-          credentials to enable accounts and cross-device sync.
-        </p>
-      </div>
-    </div>
-    <Button to={next} className="mt-5 w-full">
-      Continue without an account
-    </Button>
   </div>
 );
 

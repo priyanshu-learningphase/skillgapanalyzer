@@ -1,10 +1,9 @@
 /**
  * Authentication Context
  *
- * Provides authentication state and methods throughout the app.
- * Handles Firebase Auth and user role management. When Firebase isn't
- * configured, runs in local mode: a single local profile stored in this
- * browser, so every feature still works without an account.
+ * Provides authentication state and methods throughout the app using
+ * Firebase Auth, with the account profile in Firestore (users/{uid}).
+ * Without Firebase configuration the app shows a setup screen instead.
  */
 
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
@@ -17,19 +16,9 @@ import {
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db, firebaseEnabled } from '../config/firebase';
 import { FullPageSpinner } from '../components/ui/Spinner';
+import FirebaseSetup from '../components/common/FirebaseSetup';
 
 const AuthContext = createContext();
-
-const LOCAL_USER = { uid: 'local', email: null, isLocal: true };
-const LOCAL_PROFILE_KEY = 'skillgap.localProfile';
-
-const readLocalProfile = () => {
-  try {
-    return { name: '', role: 'student', ...JSON.parse(window.localStorage.getItem(LOCAL_PROFILE_KEY) || '{}') };
-  } catch {
-    return { name: '', role: 'student' };
-  }
-};
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -40,13 +29,12 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState(firebaseEnabled ? null : LOCAL_USER);
-  const [userProfile, setUserProfile] = useState(firebaseEnabled ? null : readLocalProfile());
+  const [currentUser, setCurrentUser] = useState(null);
+  const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(firebaseEnabled);
 
   // Sign up with email and password
   const signup = async (email, password, name, role = 'student') => {
-    if (!firebaseEnabled) throw new Error('Accounts are unavailable in local mode.');
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
 
     // Create user profile in Firestore
@@ -68,14 +56,12 @@ export const AuthProvider = ({ children }) => {
 
   // Sign in with email and password
   const login = async (email, password) => {
-    if (!firebaseEnabled) throw new Error('Accounts are unavailable in local mode.');
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     return userCredential.user;
   };
 
   // Sign out
   const logout = async () => {
-    if (!firebaseEnabled) return;
     await signOut(auth);
     setUserProfile(null);
   };
@@ -91,12 +77,6 @@ export const AuthProvider = ({ children }) => {
 
   // Update the account-level profile (name, branch, year…)
   const updateUserProfile = useCallback(async (uid, data) => {
-    if (!firebaseEnabled) {
-      const next = { ...readLocalProfile(), ...data };
-      window.localStorage.setItem(LOCAL_PROFILE_KEY, JSON.stringify(next));
-      setUserProfile(next);
-      return next;
-    }
     await setDoc(doc(db, 'users', uid), data, { merge: true });
     const updatedProfile = await fetchUserProfile(uid);
     setUserProfile(updatedProfile);
@@ -148,11 +128,13 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     updateUserProfile,
-    mode: firebaseEnabled ? 'firebase' : 'local',
-    isLocalMode: !firebaseEnabled,
     isAdmin: userProfile?.role === 'admin',
     isStudent: userProfile?.role !== 'admin',
   };
+
+  if (!firebaseEnabled) {
+    return <FirebaseSetup />;
+  }
 
   // Show loading spinner while initializing
   if (loading) {

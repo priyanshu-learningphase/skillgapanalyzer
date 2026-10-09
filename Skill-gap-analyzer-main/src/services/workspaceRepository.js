@@ -1,16 +1,16 @@
 /**
  * Workspace persistence
  *
- * A "workspace" is everything one user owns: their career profile, analysis
- * history, active roadmap and progress. Two interchangeable implementations:
+ * A "workspace" is everything one user owns. All of it is stored in Firestore:
  *
- *  - Firestore (when Firebase is configured)
- *      users/{uid}.career          career profile (+ legacy fields)
- *      skill_analysis/{autoId}     analysis snapshots (also used by admin analytics)
- *      roadmaps/{uid}              active roadmap
- *      progress/{uid}              completed tasks, hours, streak, assessments, projects
- *      insights/{uid}              resume, job description and GitHub analyses
- *  - localStorage (local mode, no account required)
+ *   users/{uid}.career          career profile and goal (+ legacy fields)
+ *   skill_analysis/{autoId}     analysis snapshots (also used by admin analytics)
+ *   roadmaps/{uid}              active roadmap
+ *   progress/{uid}              tasks, hours, streak, assessments, projects, interview practice
+ *   insights/{uid}              resume, job description and GitHub analyses
+ *
+ * Large fields are exempt from indexing (firestore.indexes.json) so documents
+ * stay well inside Firestore's per-document index limit.
  */
 
 import {
@@ -26,7 +26,7 @@ import {
   setDoc,
   where,
 } from 'firebase/firestore';
-import { db, firebaseEnabled } from '../config/firebase';
+import { db } from '../config/firebase';
 import { normalizeInsights, normalizeProgress } from '../lib/progress';
 
 const MAX_ANALYSES = 30;
@@ -119,72 +119,4 @@ const firestoreRepository = {
   },
 };
 
-// ── localStorage ───────────────────────────────────────────────────────────
-
-const storageKey = (uid) => `skillgap.workspace.v1.${uid}`;
-
-const readLocal = (uid) => {
-  try {
-    return JSON.parse(window.localStorage.getItem(storageKey(uid)) || '{}');
-  } catch {
-    return {};
-  }
-};
-
-const writeLocal = (uid, patch) => {
-  const next = { ...readLocal(uid), ...patch };
-  try {
-    window.localStorage.setItem(storageKey(uid), JSON.stringify(next));
-  } catch (error) {
-    throw new Error(
-      error?.name === 'QuotaExceededError'
-        ? 'Browser storage is full. Clear some space and try again.'
-        : 'Browser storage is unavailable (private mode or blocked site data).',
-    );
-  }
-};
-
-const localRepository = {
-  async load(uid) {
-    const data = readLocal(uid);
-    return {
-      career: data.career || null,
-      legacy: { skills: [], career_interest: '' },
-      analyses: data.analyses || [],
-      roadmap: data.roadmap || null,
-      progress: normalizeProgress(data.progress),
-      insights: normalizeInsights(data.insights),
-    };
-  },
-  async saveCareer(uid, career) {
-    writeLocal(uid, { career: clean(career) });
-  },
-  async addAnalysis(uid, snapshot) {
-    const entry = {
-      id: `a_${Date.now().toString(36)}`,
-      ...clean(snapshot),
-      userId: uid,
-      createdAt: new Date().toISOString(),
-    };
-    writeLocal(uid, { analyses: [entry, ...(readLocal(uid).analyses || [])].slice(0, MAX_ANALYSES) });
-    return entry;
-  },
-  async saveRoadmap(uid, roadmap) {
-    writeLocal(uid, { roadmap: roadmap ? clean(roadmap) : null });
-  },
-  async saveProgress(uid, progress) {
-    writeLocal(uid, { progress: clean(progress) });
-  },
-  async saveInsights(uid, insights) {
-    writeLocal(uid, { insights: clean(insights) });
-  },
-  async reset(uid) {
-    try {
-      window.localStorage.removeItem(storageKey(uid));
-    } catch {
-      /* storage unavailable: nothing to clear */
-    }
-  },
-};
-
-export const workspaceRepository = firebaseEnabled ? firestoreRepository : localRepository;
+export const workspaceRepository = firestoreRepository;

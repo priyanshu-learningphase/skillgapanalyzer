@@ -5,7 +5,7 @@
 import { useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import AuthLayout, { LocalModeNotice } from './AuthLayout';
+import AuthLayout from './AuthLayout';
 import Button from '../ui/Button';
 import { safeNext } from '../../hooks/useStartPath';
 
@@ -15,19 +15,11 @@ const Login = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const { login, currentUser, isLocalMode } = useAuth();
+  const { login, currentUser } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [params] = useSearchParams();
   const next = safeNext(params.get('next') || location.state?.from?.pathname);
-
-  if (isLocalMode) {
-    return (
-      <AuthLayout title="Welcome back" subtitle="Continue where you left off.">
-        <LocalModeNotice next={next} />
-      </AuthLayout>
-    );
-  }
 
   if (currentUser) return <Navigate to={next} replace />;
 

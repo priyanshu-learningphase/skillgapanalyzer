@@ -50,7 +50,7 @@ const ResumeUpload = ({ onText, busy }) => {
           ]}
         />
         <span className="inline-flex items-center gap-1.5 text-xs text-muted">
-          <Lock className="h-3 w-3" aria-hidden /> Processed in your browser — the file isn’t uploaded anywhere
+          <Lock className="h-3 w-3" aria-hidden /> Read in your browser. The file isn’t uploaded; only the extracted details are saved to your account.
         </span>
       </div>
 

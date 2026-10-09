@@ -4,7 +4,7 @@ A career readiness platform: find your skill gaps for a target role and company,
 
 **Current skills → Skill gap → Roadmap → Projects → Assessments → Career readiness**
 
-React 18 · Vite · Tailwind CSS · Firebase (optional) · Gemini (optional, server-side) · pdf.js
+React 18 · Vite · Tailwind CSS · Firebase (Auth + Firestore) · Gemini (optional, server-side) · pdf.js
 
 ---
 
@@ -24,7 +24,7 @@ React 18 · Vite · Tailwind CSS · Firebase (optional) · Gemini (optional, ser
 | **GitHub Analyzer** | Scores a public GitHub profile out of 100 (portfolio size, recent activity, documentation, project diversity, role relevance, testing and CI), shows strengths and what needs work, and recommends projects. |
 | **Adaptive roadmaps** | Assessment scores under 60% bring fundamentals back; scores over 85% skip beginner content. Completing skills or projects, or changing your goal, triggers a re-plan. Completed work is always kept. |
 
-All of this works with no backend: data is stored in the browser, and analysis and planning are deterministic. Nothing pretends to call an external service. The GitHub analyzer calls GitHub's public API directly, and AI personalisation only runs when the server has a key.
+Every piece of user data is stored in **Firebase** (see [Data in Firestore](#data-in-firestore)). Analysis and planning are deterministic and run in the app. Nothing pretends to call an external service: the GitHub analyzer calls GitHub's public API directly, and AI personalisation only runs when the server has a key.
 
 ## Run it
 
@@ -33,23 +33,36 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:3000. No configuration is needed.
+Open http://localhost:3000. Firebase must be set up first (below); without it the app shows a setup screen listing the missing variables.
 
 | Command | What it does |
 |---|---|
 | `npm run dev` | Vite dev server **with the `/api` routes mounted** (one process) |
 | `npm run build` | Production build to `dist/` |
 | `npm start` | Standalone Node server: serves `dist/` + `/api` on `PORT` (default 8080) |
-| `npm test` | Unit tests: analysis engine, planner, assessments, resume/JD parsing, simulator, GitHub scoring, API |
-| `npm run deploy` | Build + `firebase deploy` (static hosting; see notes below) |
+| `npm test` | Unit tests: analysis engine, planner, assessments, resume/JD parsing, simulator, GitHub scoring, Firestore document validity, API |
+| `npm run deploy` | Build + `firebase deploy` (hosting, Firestore rules and indexes) |
+
+## Firebase setup
+
+1. In the [Firebase console](https://console.firebase.google.com), open your project (or create one).
+2. **Authentication → Sign-in method:** enable **Email/Password**.
+3. **Firestore Database:** create the database.
+4. **Project settings → Your apps:** add a Web app (if there isn't one) and copy its config values into `.env` (see below).
+5. Deploy the security rules and index settings from this repo. They're required: the old rules don't allow the `roadmaps`, `progress` and `insights` collections, and the app will report "Firestore denied access" until they're deployed.
+
+   ```bash
+   npx firebase-tools login
+   npx firebase-tools deploy --only firestore --project <your-project-id>
+   ```
 
 ## Environment variables
 
-Copy `.env.example` to `.env`. Everything is optional.
+Copy `.env.example` to `.env`. The Firebase variables are required; the rest are optional.
 
 | Variable | Where it's used | Purpose |
 |---|---|---|
-| `VITE_FIREBASE_*` | Browser | Enables accounts, Firestore sync and campus analytics. Public identifiers; access is enforced by `firestore.rules`. |
+| `VITE_FIREBASE_*` | Browser | **Required.** Accounts and all user data. Public identifiers; access is enforced by `firestore.rules`. |
 | `GEMINI_API_KEY` | **Server only** | Enables AI personalisation of roadmap phases. Never exposed to the browser. |
 | `GEMINI_MODEL` | Server | Defaults to `gemini-2.5-flash`. |
 | `AI_TIMEOUT_MS` | Server | AI request timeout (default 60000). |
@@ -86,7 +99,7 @@ src/
   lib/           analysis.js, roadmap.js (planner), roadmapSchema.js (AI contract), progress.js,
                  assessment.js, projects.js, resume.js, jobDescription.js, textSkills.js,
                  simulator.js, weekPlan.js, dependencyGraph.js, interview.js, github.js
-  services/      workspaceRepository.js (Firestore | localStorage), roadmapService.js, aiService.js,
+  services/      workspaceRepository.js (Firestore), roadmapService.js, aiService.js,
                  githubService.js (public REST API), pdfText.js (pdf.js, lazy-loaded), firestoreService.js
   context/       AuthContext, WorkspaceContext (state + actions), ToastContext
   components/    ui/ (design system), layout/, analysis/, skills/, careers/, dashboard/, roadmap/,
@@ -94,23 +107,33 @@ src/
   pages/         Dashboard, MySkills, SkillGap, Roadmap, Projects, Assessments, AssessmentRunner, Jobs,
                  Simulator, Careers, Interview, GitHubAnalyzer, Progress, Resources, Settings (Profile), ...
 server/          api.js (routes), gemini.js, prompt.js, index.js (production server), env.js
-tests/           engine.test.js, platform.test.js, api.test.js
+tests/           engine.test.js, platform.test.js, firestore.test.js, api.test.js
 ```
 
 - **Business logic is pure and UI-free** (`src/lib`) and shared by the browser and the server.
-- **Persistence** sits behind one interface with two implementations. Firestore layout:
-  - `users/{uid}.career`: career profile, including target role and company
-  - `skill_analysis/{id}`: analysis snapshots (same fields as before, so campus analytics keep working)
-  - `roadmaps/{uid}`: active roadmap
-  - `progress/{uid}`: tasks, hours, streak, skill history, assessments, projects, interview practice, weekly checks
-  - `insights/{uid}`: latest resume, job description and GitHub analyses, plus saved jobs
 - Old routes (`/analysis`, `/results`, `/settings`) redirect to their new pages.
+
+## Data in Firestore
+
+All user data lives in Firestore, written by `src/services/workspaceRepository.js` and `src/context/AuthContext.jsx`. Nothing is kept in browser storage.
+
+| Document | Contents |
+|---|---|
+| `users/{uid}` | Account (name, email, role) and `career`: target role, target company, level, skills with levels, schedule |
+| `skill_analysis/{id}` | One snapshot per analysis: readiness, matched/missing skills, gaps (same fields as before, so campus analytics keep working) |
+| `roadmaps/{uid}` | The active roadmap: phases, tasks, resources, projects, change history |
+| `progress/{uid}` | Completed tasks, hours, streak, skill history, activity, assessment results, project status, interview practice, weekly checks |
+| `insights/{uid}` | Latest resume analysis (parsed fields only, not the raw text), saved job descriptions (up to 10), GitHub analysis |
+
+- Every document is private to its owner (`firestore.rules`); admins can also read profiles and analysis snapshots for campus analytics.
+- Large fields are exempt from indexing (`firestore.indexes.json`) because the app never queries them. This keeps a heavily used progress document well inside Firestore's per-document index limit. `tests/firestore.test.js` builds every document type and checks it with the Firebase SDK's write validation, the 1 MiB size limit and the index limit.
+- Changes save immediately, and the UI updates before the write finishes. If a write fails, a toast explains why and offers a retry.
 
 ## Deployment notes
 
 - `npm start` serves everything (SPA + API) from one Node process. This is the simplest option for Render, Railway, Fly.io, Cloud Run and similar hosts.
 - Firebase Hosting (`npm run deploy`) serves the static app. Without an API backend the app still works fully, and roadmaps use the planner. To enable AI there, deploy `server/` (for example on Cloud Run) and add a hosting rewrite for `/api/**`.
-- Deploy `firestore.rules` with the app (it includes the new `insights` collection).
+- Deploy `firestore.rules` and `firestore.indexes.json` with the app (`npm run deploy` does both). A project still on the original rules will deny the new collections.
 
 ## Known considerations
 

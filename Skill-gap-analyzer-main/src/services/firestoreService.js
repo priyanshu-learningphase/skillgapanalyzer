@@ -6,7 +6,7 @@
  */
 
 import { collection, getDocs, orderBy, query, where } from 'firebase/firestore';
-import { db, firebaseEnabled } from '../config/firebase';
+import { db } from '../config/firebase';
 
 /**
  * Admin: Get all analyses for campus-wide insights
@@ -14,7 +14,6 @@ import { db, firebaseEnabled } from '../config/firebase';
  * @returns {Promise<object[]>} - All analyses
  */
 export const getAllAnalyses = async () => {
-  if (!firebaseEnabled) return [];
   const snapshot = await getDocs(query(collection(db, 'skill_analysis'), orderBy('createdAt', 'desc')));
   return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
 };
@@ -83,7 +82,6 @@ export const getCampusAnalytics = async () => {
  * @returns {Promise<object[]>} - Array of student profiles
  */
 export const getAllStudents = async () => {
-  if (!firebaseEnabled) return [];
   const snapshot = await getDocs(query(collection(db, 'users'), where('role', '==', 'student')));
   return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
 };

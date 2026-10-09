@@ -1,4 +1,20 @@
 {
   "indexes": [],
-  "fieldOverrides": []
+  "fieldOverrides": [
+    { "collectionGroup": "users", "fieldPath": "career", "indexes": [] },
+    { "collectionGroup": "skill_analysis", "fieldPath": "gaps", "indexes": [] },
+    { "collectionGroup": "roadmaps", "fieldPath": "roadmap", "indexes": [] },
+    { "collectionGroup": "progress", "fieldPath": "completedTasks", "indexes": [] },
+    { "collectionGroup": "progress", "fieldPath": "hoursLog", "indexes": [] },
+    { "collectionGroup": "progress", "fieldPath": "activeDates", "indexes": [] },
+    { "collectionGroup": "progress", "fieldPath": "skillHistory", "indexes": [] },
+    { "collectionGroup": "progress", "fieldPath": "activity", "indexes": [] },
+    { "collectionGroup": "progress", "fieldPath": "assessments", "indexes": [] },
+    { "collectionGroup": "progress", "fieldPath": "projects", "indexes": [] },
+    { "collectionGroup": "progress", "fieldPath": "interview", "indexes": [] },
+    { "collectionGroup": "progress", "fieldPath": "weekChecks", "indexes": [] },
+    { "collectionGroup": "insights", "fieldPath": "resume", "indexes": [] },
+    { "collectionGroup": "insights", "fieldPath": "jobs", "indexes": [] },
+    { "collectionGroup": "insights", "fieldPath": "github", "indexes": [] }
+  ]
 }

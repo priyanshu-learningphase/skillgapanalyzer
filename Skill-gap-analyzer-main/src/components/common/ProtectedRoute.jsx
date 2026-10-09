@@ -2,8 +2,7 @@
  * Protected Route Component
  *
  * Wraps routes that require authentication.
- * Redirects to login if user is not authenticated. In local mode there is
- * always a local user, so routes are open.
+ * Redirects to login if user is not authenticated.
  */
 
 import { Navigate, useLocation } from 'react-router-dom';

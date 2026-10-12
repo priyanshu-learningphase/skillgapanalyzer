@@ -1,10 +1,10 @@
 /**
  * Firebase configuration
  *
- * Firebase is required: accounts use Firebase Auth and every piece of user
- * data (profile, career goal, analyses, roadmap, progress, resume / job /
- * GitHub results) is stored in Firestore. If the VITE_FIREBASE_* variables are
- * missing, the app shows a setup screen instead of running.
+ * Firebase is optional. When the VITE_FIREBASE_* variables are present the app
+ * uses Firebase Auth + Firestore (accounts, cross-device sync, campus
+ * analytics). Without them it runs in local mode and stores data in the
+ * browser, so the product still works end-to-end for development and demos.
  *
  * Note: Firebase web config values are public identifiers, not secrets —
  * access is enforced by firestore.rules.
@@ -23,33 +23,24 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-const ENV_NAMES = {
-  apiKey: 'VITE_FIREBASE_API_KEY',
-  authDomain: 'VITE_FIREBASE_AUTH_DOMAIN',
-  projectId: 'VITE_FIREBASE_PROJECT_ID',
-  appId: 'VITE_FIREBASE_APP_ID',
-};
-
 const looksConfigured = (value) => typeof value === 'string' && value.length > 0 && !value.startsWith('your_');
 
-/** Variables that must be set for sign-in and Firestore to work. */
-export const missingFirebaseEnv = Object.entries(ENV_NAMES)
-  .filter(([key]) => !looksConfigured(firebaseConfig[key]))
-  .map(([, name]) => name);
+export const isFirebaseConfigured =
+  looksConfigured(firebaseConfig.apiKey) &&
+  looksConfigured(firebaseConfig.projectId) &&
+  looksConfigured(firebaseConfig.appId);
 
 let app = null;
 let auth = null;
 let db = null;
-let firebaseInitError = null;
 
-if (!missingFirebaseEnv.length) {
+if (isFirebaseConfigured) {
   try {
     app = initializeApp(firebaseConfig);
     auth = getAuth(app);
     db = getFirestore(app);
   } catch (error) {
-    console.error('Firebase failed to initialise.', error);
-    firebaseInitError = error;
+    console.error('Firebase failed to initialise; falling back to local mode.', error);
     app = null;
     auth = null;
     db = null;
@@ -57,5 +48,5 @@ if (!missingFirebaseEnv.length) {
 }
 
 export const firebaseEnabled = Boolean(app);
-export { auth, db, firebaseInitError };
+export { auth, db };
 export default app;

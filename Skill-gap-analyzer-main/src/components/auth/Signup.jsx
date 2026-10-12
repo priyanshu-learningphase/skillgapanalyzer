@@ -5,7 +5,7 @@
 import { useState } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import AuthLayout from './AuthLayout';
+import AuthLayout, { LocalModeNotice } from './AuthLayout';
 import Button from '../ui/Button';
 import { safeNext } from '../../hooks/useStartPath';
 
@@ -14,10 +14,18 @@ const Signup = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const { signup, currentUser } = useAuth();
+  const { signup, currentUser, isLocalMode } = useAuth();
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const next = safeNext(params.get('next'), '/onboarding');
+
+  if (isLocalMode) {
+    return (
+      <AuthLayout title="Create your account" subtitle="Get your readiness score and roadmap in a few minutes.">
+        <LocalModeNotice next={next} />
+      </AuthLayout>
+    );
+  }
 
   if (currentUser) return <Navigate to={next} replace />;
 

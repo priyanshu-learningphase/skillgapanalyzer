@@ -4,7 +4,7 @@
 
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, Cpu, HardDrive, Cloud, LogOut, RefreshCw, Pause, Play, ScanSearch } from 'lucide-react';
+import { Sparkles, Cpu, Cloud, LogOut, RefreshCw, Pause, Play, ScanSearch } from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
@@ -30,7 +30,7 @@ const Section = ({ title, description, children }) => (
 );
 
 const Settings = () => {
-  const { currentUser, userProfile, updateUserProfile, logout, isLocalMode } = useAuth();
+  const { currentUser, userProfile, updateUserProfile, logout } = useAuth();
   const { career, role, roadmap, isOnboarded, actions } = useWorkspace();
   const toast = useToast();
   const navigate = useNavigate();
@@ -112,7 +112,7 @@ const Settings = () => {
       <PageHeader title="Profile & settings" description="Your details, career goal, target company and how your roadmap is planned." />
 
       <div className="space-y-4">
-        <Section title="Profile" description={isLocalMode ? 'Stored in this browser.' : currentUser?.email}>
+        <Section title="Profile" description={currentUser?.email}>
           <form onSubmit={saveProfile} className="grid max-w-lg gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2">
               <label htmlFor="name" className="label">
@@ -258,28 +258,26 @@ const Settings = () => {
           </div>
         </Section>
 
-        <Section title="Data" description={isLocalMode ? 'Everything is stored locally in this browser.' : 'Synced to your account with Firebase.'}>
+        <Section title="Data" description="Stored in your account with Firebase and synced across devices.">
           <div className="max-w-lg space-y-4">
             <p className="flex items-center gap-2 text-sm text-ink">
-              {isLocalMode ? <HardDrive className="h-4 w-4 text-muted" aria-hidden /> : <Cloud className="h-4 w-4 text-muted" aria-hidden />}
-              {isLocalMode ? 'Local browser storage — clearing site data will remove it.' : 'Cloud sync across devices.'}
+              <Cloud className="h-4 w-4 shrink-0 text-muted" aria-hidden />
+              Profile, career goal, analyses, roadmap, progress, assessments, projects, and resume, job and GitHub results.
             </p>
             <div className="flex flex-wrap gap-2">
               <Button variant="danger" onClick={() => setConfirmReset(true)} disabled={!career && !roadmap}>
                 Reset all data
               </Button>
-              {!isLocalMode && (
-                <Button
-                  variant="secondary"
-                  icon={LogOut}
-                  onClick={async () => {
-                    await logout();
-                    navigate('/');
-                  }}
-                >
-                  Sign out
-                </Button>
-              )}
+              <Button
+                variant="secondary"
+                icon={LogOut}
+                onClick={async () => {
+                  await logout();
+                  navigate('/');
+                }}
+              >
+                Sign out
+              </Button>
             </div>
           </div>
         </Section>
@@ -292,7 +290,7 @@ const Settings = () => {
         loading={resetting}
         tone="danger"
         title="Reset all data?"
-        description="This permanently deletes your career profile, analysis history, roadmap and progress. This can’t be undone."
+        description="This permanently deletes your career profile, analysis history, roadmap, progress, and saved resume, job and GitHub results from Firebase. This can’t be undone."
         confirmLabel="Reset everything"
       />
       <ConfirmDialog

@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
+import { cx } from '../../lib/cx';
 
 /**
  * Single-series line chart on a 0–100 scale (e.g. readiness over time).
@@ -69,7 +70,11 @@ const LineChart = ({ points, height = 180, format = (v) => `${v}%`, target, targ
         )}
       </svg>
       <div
-        className="pointer-events-none absolute -translate-x-1/2 whitespace-nowrap rounded-md bg-ink px-2 py-1 text-[11px] font-medium text-white shadow-pop"
+        className={cx(
+          'pointer-events-none absolute whitespace-nowrap rounded-md bg-ink px-2 py-1 text-[11px] font-medium text-white shadow-pop',
+          // Keep the tooltip inside the chart near either edge.
+          x(active) / width > 0.8 ? '-translate-x-full' : x(active) / width < 0.2 ? '' : '-translate-x-1/2',
+        )}
         style={{ left: `${(x(active) / width) * 100}%`, top: Math.max(0, (y(points[active].value) / height) * 100 - 22) + '%' }}
         aria-hidden
       >

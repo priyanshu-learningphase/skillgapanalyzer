@@ -2,12 +2,19 @@ import Card from '../ui/Card';
 import ProgressBar from '../ui/ProgressBar';
 import Sparkline from '../ui/Sparkline';
 import { cx } from '../../lib/cx';
+import { readinessBandFor } from '../../lib/analysis';
+
+/** Colour treatment per readiness band (thresholds live in lib/analysis). */
+export const BAND_STYLE = {
+  ready: { dot: 'bg-success', tone: 'success' },
+  close: { dot: 'bg-accent', tone: 'accent' },
+  building: { dot: 'bg-warning', tone: 'warning' },
+  foundations: { dot: 'bg-slate-400', tone: 'muted' },
+};
 
 export const readinessBand = (score) => {
-  if (score >= 80) return { label: 'Job-ready', dot: 'bg-success', tone: 'success' };
-  if (score >= 60) return { label: 'Getting close', dot: 'bg-accent', tone: 'accent' };
-  if (score >= 35) return { label: 'Building momentum', dot: 'bg-warning', tone: 'warning' };
-  return { label: 'Laying foundations', dot: 'bg-slate-400', tone: 'muted' };
+  const band = readinessBandFor(score);
+  return { id: band.id, label: band.label, ...BAND_STYLE[band.id] };
 };
 
 /** Hero figure for the analysis: readiness score, change and trend. */

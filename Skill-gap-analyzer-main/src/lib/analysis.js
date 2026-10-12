@@ -25,6 +25,16 @@ export const STANDING_META = {
   missing: { label: 'Missing', description: 'Little or no experience yet' },
 };
 
+/** Readiness bands, highest first. Shared by the student and campus views. */
+export const READINESS_BANDS = [
+  { id: 'ready', min: 80, label: 'Job-ready' },
+  { id: 'close', min: 60, label: 'Getting close' },
+  { id: 'building', min: 35, label: 'Building momentum' },
+  { id: 'foundations', min: 0, label: 'Laying foundations' },
+];
+
+export const readinessBandFor = (score) => READINESS_BANDS.find((band) => score >= band.min) || READINESS_BANDS[READINESS_BANDS.length - 1];
+
 /** Below this level a skill counts as missing rather than in progress. */
 const MISSING_BELOW = 15;
 

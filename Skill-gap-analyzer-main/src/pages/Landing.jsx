@@ -49,7 +49,7 @@ const FEATURES = [
 ];
 
 const Landing = () => {
-  const { currentUser, isLocalMode } = useAuth();
+  const { currentUser } = useAuth();
   const startPath = useStartPath();
   const appEntry = currentUser ? '/dashboard' : '/login';
 
@@ -66,7 +66,7 @@ const Landing = () => {
           </nav>
           <div className="ml-auto flex items-center gap-2">
             <Button variant="ghost" size="sm" to={appEntry} className="hidden sm:inline-flex">
-              {currentUser || isLocalMode ? 'Open app' : 'Sign in'}
+              {currentUser ? 'Open app' : 'Sign in'}
             </Button>
             <Button size="sm" to={startPath}>
               Analyze my skills

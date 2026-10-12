@@ -11,7 +11,6 @@ import {
   Github,
   UserCircle2,
   Building2,
-  HardDrive,
 } from 'lucide-react';
 import Logo from './Logo';
 import ProgressBar from '../ui/ProgressBar';
@@ -53,7 +52,7 @@ const NavItem = ({ to, label, icon: Icon, badge, onNavigate }) => (
 );
 
 const Sidebar = ({ onNavigate }) => {
-  const { isAdmin, isLocalMode } = useAuth();
+  const { isAdmin } = useAuth();
   const { role, analysis, stats, roadmapState } = useWorkspace();
 
   const roadmapBadge =
@@ -90,12 +89,6 @@ const Sidebar = ({ onNavigate }) => {
             </div>
           </NavLink>
         ) : null}
-        {isLocalMode && (
-          <p className="flex items-center gap-1.5 px-1 text-[11px] text-muted-light">
-            <HardDrive className="h-3 w-3" aria-hidden />
-            Data saved in this browser
-          </p>
-        )}
       </div>
     </div>
   );

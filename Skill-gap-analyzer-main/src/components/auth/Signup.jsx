@@ -4,35 +4,20 @@
 
 import { useState } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
-import { GraduationCap, Building2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import AuthLayout, { LocalModeNotice } from './AuthLayout';
+import AuthLayout from './AuthLayout';
 import Button from '../ui/Button';
 import { safeNext } from '../../hooks/useStartPath';
-import { cx } from '../../lib/cx';
-
-const ACCOUNT_TYPES = [
-  { id: 'student', label: 'Learner', hint: 'Analyze my skills', icon: GraduationCap },
-  { id: 'admin', label: 'Placement cell', hint: 'Campus analytics', icon: Building2 },
-];
 
 const Signup = () => {
-  const [formData, setFormData] = useState({ name: '', email: '', password: '', role: 'student' });
+  const [formData, setFormData] = useState({ name: '', email: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const { signup, currentUser, isLocalMode } = useAuth();
+  const { signup, currentUser } = useAuth();
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const next = safeNext(params.get('next'), '/onboarding');
-
-  if (isLocalMode) {
-    return (
-      <AuthLayout title="Create your account" subtitle="Get your readiness score and roadmap in a few minutes.">
-        <LocalModeNotice next={next} />
-      </AuthLayout>
-    );
-  }
 
   if (currentUser) return <Navigate to={next} replace />;
 
@@ -56,8 +41,8 @@ const Signup = () => {
     setLoading(true);
 
     try {
-      await signup(formData.email, formData.password, formData.name.trim(), formData.role);
-      navigate(formData.role === 'admin' ? '/admin' : next, { replace: true });
+      await signup(formData.email, formData.password, formData.name.trim());
+      navigate(next, { replace: true });
     } catch (err) {
       if (err.code === 'auth/email-already-in-use') {
         setError('This email is already registered. Try signing in.');
@@ -120,37 +105,11 @@ const Signup = () => {
           />
         </div>
 
-        <fieldset>
-          <legend className="label">Account type</legend>
-          <div className="grid grid-cols-2 gap-2">
-            {ACCOUNT_TYPES.map((type) => {
-              const active = formData.role === type.id;
-              return (
-                <button
-                  key={type.id}
-                  type="button"
-                  onClick={() => setFormData({ ...formData, role: type.id })}
-                  aria-pressed={active}
-                  className={cx(
-                    'flex items-start gap-2.5 rounded-lg border p-3 text-left transition-colors',
-                    active ? 'border-ink bg-slate-50 ring-1 ring-ink' : 'border-line hover:border-slate-300',
-                  )}
-                >
-                  <type.icon className={cx('mt-0.5 h-4 w-4', active ? 'text-ink' : 'text-muted')} aria-hidden />
-                  <span>
-                    <span className="block text-sm font-medium text-ink">{type.label}</span>
-                    <span className="block text-xs text-muted">{type.hint}</span>
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </fieldset>
-
         <Button type="submit" loading={loading} className="w-full" size="lg">
           Create account
         </Button>
         <p className="text-center text-xs text-muted">By signing up, you agree to our Terms of Service and Privacy Policy.</p>
+        <p className="text-center text-xs text-muted">Placement cell staff: create an account, then ask your administrator to grant admin access.</p>
       </form>
     </AuthLayout>
   );

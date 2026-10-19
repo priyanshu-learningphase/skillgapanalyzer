@@ -6,7 +6,7 @@ import { readResumeFile } from '../../services/pdfText';
 import { cx } from '../../lib/cx';
 
 /**
- * Collect resume text from a PDF/TXT upload or a paste. Text extraction runs
+ * Collect resume text from a PDF, DOCX or TXT upload, or a paste. Text extraction runs
  * locally in the browser.
  */
 const ResumeUpload = ({ onText, busy }) => {
@@ -73,11 +73,11 @@ const ResumeUpload = ({ onText, busy }) => {
         >
           {working ? <Loader2 className="h-6 w-6 animate-spin text-muted" aria-hidden /> : <FileUp className="h-6 w-6 text-muted" aria-hidden />}
           <p className="mt-3 text-sm font-medium text-ink">{working ? 'Reading your resume…' : 'Drop your resume here'}</p>
-          <p className="mt-1 text-xs text-muted">PDF or .txt, up to 5 MB</p>
+          <p className="mt-1 text-xs text-muted">PDF, DOCX or .txt, up to 5 MB</p>
           <input
             ref={inputRef}
             type="file"
-            accept=".pdf,.txt,application/pdf,text/plain"
+            accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
             className="sr-only"
             onChange={(e) => {
               handleFile(e.target.files?.[0]);

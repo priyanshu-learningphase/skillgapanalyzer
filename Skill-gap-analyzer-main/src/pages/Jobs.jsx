@@ -4,7 +4,7 @@
 
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Check, X, Trash2, Briefcase, Target, Route, GraduationCap, Clock, Users } from 'lucide-react';
+import { Check, X, Trash2, Briefcase, Target, Route, GraduationCap, Clock, Users, KanbanSquare } from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
 import Card, { CardHeader, CardBody } from '../components/ui/Card';
 import Button from '../components/ui/Button';
@@ -42,7 +42,7 @@ Nice to have
 - Exposure to system design for high-traffic services`;
 
 const Jobs = () => {
-  const { analysis, career, insights, actions } = useWorkspace();
+  const { analysis, career, insights, tracker, actions } = useWorkspace();
   const toast = useToast();
   const navigate = useNavigate();
   const [text, setText] = useState('');
@@ -53,6 +53,7 @@ const Jobs = () => {
 
   const jobs = insights.jobs || [];
   const job = jobs.find((j) => j.id === selectedId) || jobs[0] || null;
+  const trackedApp = job ? tracker.applications.find((a) => a.jobId === job.id) : null;
 
   const match = useMemo(() => (job && analysis ? matchJob(job.parsed, analysis.levels) : null), [job, analysis]);
   const targeted = useMemo(() => {
@@ -60,7 +61,7 @@ const Jobs = () => {
     return analyzeRole(buildCustomRole(jobToCustomRole(job.parsed)), career.skills);
   }, [job, analysis, career]);
 
-  if (!analysis) return <NoAnalysisState title="Add your skills first" description="We compare job descriptions against your skill profile." />;
+  if (!analysis) return <NoAnalysisState page="Jobs" title="Add your skills first" description="We compare job descriptions against your skill profile." />;
 
   const analyze = async () => {
     const parsed = parseJobDescription(text);
@@ -197,7 +198,15 @@ const Jobs = () => {
                 <Button icon={Target} onClick={() => setConfirmTarget(true)} disabled={!job.parsed.required.length}>
                   Target this job
                 </Button>
-                <span className="text-xs text-muted">Builds a roadmap for exactly these skills</span>
+                {trackedApp ? (
+                  <Button variant="secondary" icon={KanbanSquare} to={`/applications/${trackedApp.id}`}>
+                    View application
+                  </Button>
+                ) : (
+                  <Button variant="secondary" icon={KanbanSquare} onClick={() => navigate('/applications', { state: { draft: { role: job.parsed.title, parsed: job.parsed, jobId: job.id } } })}>
+                    Track application
+                  </Button>
+                )}
               </div>
             </div>
           </Card>

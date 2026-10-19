@@ -23,7 +23,7 @@ const Progress = () => {
   const { role, career, roadmap, roadmapState, stats, progress, isOnboarded, actions } = useWorkspace();
   const toast = useToast();
 
-  if (!isOnboarded) return <NoAnalysisState title="No progress yet" description="Analyze your skills and generate a roadmap to start tracking progress." />;
+  if (!isOnboarded) return <NoAnalysisState page="Progress" title="No progress yet" description="Analyze your skills and generate a roadmap to start tracking progress." />;
 
   const streak = currentStreak(progress.activeDates);
   const hours = totalHours(progress.hoursLog);

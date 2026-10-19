@@ -52,7 +52,7 @@ const geminiReply = (json) => ({
 
 test('health reports AI disabled without a key and never leaks it', async () => {
   const off = await call(createApiMiddleware({}), { url: '/api/health' });
-  assert.deepEqual(off.body, { ok: true, ai: { enabled: false, model: null } });
+  assert.deepEqual(off.body, { ok: true, ai: { enabled: false, model: null }, execution: { enabled: false, languages: [] }, market: { enabled: false, provider: null } });
   const on = await call(createApiMiddleware({ GEMINI_API_KEY: 'secret-key' }), { url: '/api/health' });
   assert.equal(on.body.ai.enabled, true);
   assert.ok(!JSON.stringify(on.body).includes('secret-key'));
@@ -120,4 +120,126 @@ test('enrich rejects malformed model output and upstream errors without leaking 
   const upstream = await call(createApiMiddleware({ GEMINI_API_KEY: 'k' }), { method: 'POST', url: '/api/roadmap/enrich', body: request });
   assert.equal(upstream.status, 502);
   assert.ok(!JSON.stringify(upstream.body).includes('trace'));
+});
+
+test('code execution reports "not configured" without a service', async () => {
+  const api = createApiMiddleware({});
+  const health = await call(api, { url: '/api/health' });
+  assert.deepEqual(health.body.execution, { enabled: false, languages: [] });
+  const res = await call(api, { method: 'POST', url: '/api/execute', body: { language: 'python', code: 'print(1)' } });
+  assert.equal(res.status, 501);
+  assert.equal(res.body.error, 'not_configured');
+});
+
+test('code execution validates input and relays the Judge0 result', async () => {
+  let sent;
+  globalThis.fetch = async (url, init) => {
+    sent = { url, init, body: JSON.parse(init.body) };
+    return { ok: true, json: async () => ({ status: { description: 'Accepted' }, stdout: 'hi\n', stderr: null, time: '0.01' }) };
+  };
+  const api = createApiMiddleware({ JUDGE0_URL: 'https://judge.example.com/', JUDGE0_KEY: 'k', JUDGE0_AUTH_HEADER: 'X-RapidAPI-Key' });
+  const health = await call(api, { url: '/api/health' });
+  assert.deepEqual(health.body.execution, { enabled: true, languages: ['python'] });
+  assert.equal((await call(api, { method: 'POST', url: '/api/execute', body: { language: 'ruby', code: 'x' } })).status, 400);
+  assert.equal((await call(api, { method: 'POST', url: '/api/execute', body: { language: 'python', code: 'x'.repeat(20001) } })).status, 400);
+  const res = await call(api, { method: 'POST', url: '/api/execute', body: { language: 'python', code: 'print("hi")' } });
+  assert.equal(res.status, 200);
+  assert.deepEqual(res.body, { status: 'Accepted', stdout: 'hi\n', stderr: '', time: '0.01' });
+  assert.equal(sent.url, 'https://judge.example.com/submissions?base64_encoded=false&wait=true');
+  assert.equal(sent.init.headers['X-RapidAPI-Key'], 'k');
+  assert.equal(sent.body.language_id, 71);
+});
+
+test('market insights report "not configured" without provider keys', async () => {
+  const api = createApiMiddleware({});
+  const res = await call(api, { url: '/api/market?role=backend-developer&location=india' });
+  assert.equal(res.status, 501);
+  assert.equal(res.body.configured, false);
+});
+
+test('market insights aggregate real provider ads and cache them', async () => {
+  const calls = [];
+  const ad = (title, description, salary = null) => ({ title, description, created: '2026-10-10T00:00:00Z', company: { display_name: 'Acme' }, salary_min: salary, salary_max: salary, salary_is_predicted: salary ? '0' : '1' });
+  globalThis.fetch = async (url) => {
+    calls.push(url);
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        count: 1234,
+        results: [
+          ad('Backend Developer (Node.js)', 'Node.js, SQL and Docker. 0-2 years', 600000),
+          ad('Senior Backend Engineer', 'Java, SQL, Kubernetes', 2400000),
+          ad('Backend Intern', 'Python and SQL basics'),
+          ad('Backend Developer', 'Node.js, REST APIs, SQL'),
+        ],
+      }),
+    };
+  };
+  const api = createApiMiddleware({ ADZUNA_APP_ID: 'id', ADZUNA_APP_KEY: 'key' });
+  assert.equal((await call(api, { url: '/api/market?role=nope' })).status, 400);
+  assert.equal((await call(api, { url: '/api/market?role=backend-developer&location=mars' })).status, 400);
+  const res = await call(api, { url: '/api/market?role=backend-developer&location=bengaluru' });
+  assert.equal(res.status, 200);
+  assert.equal(res.body.provider, 'Adzuna');
+  assert.equal(res.body.location, 'Bengaluru');
+  assert.equal(res.body.totalMatching, 1234);
+  assert.equal(res.body.sampleSize, 4);
+  assert.equal(res.body.topSkills[0].id, 'sql');
+  assert.equal(res.body.topSkills[0].share, 100);
+  assert.equal(res.body.salary.median, null, 'only 2 stated salaries: not enough to show');
+  assert.ok(res.body.limitations.length >= 3);
+  assert.match(calls[0], /api\.adzuna\.com\/v1\/api\/jobs\/in\/search\/1/);
+  assert.match(calls[0], /where=Bangalore/);
+  assert.match(calls[0], /what=backend\+developer/);
+  // Second request for the same query is served from the cache.
+  const again = await call(api, { url: '/api/market?role=backend-developer&location=bengaluru&level=internship' });
+  assert.equal(calls.length, 1);
+  assert.equal(again.body.cached, true);
+  assert.equal(again.body.sampleSize, 1);
+});
+
+const feedbackBody = () => ({
+  role: 'Frontend Developer',
+  kind: 'behavioral',
+  question: 'Describe a time you disagreed with a teammate.',
+  points: ['Listen first', 'Data over opinions'],
+  answer: 'In my final year project I disagreed with a teammate about the database. I listened to his reasons, then I built a small benchmark and we chose Postgres together.',
+});
+
+test('interview feedback returns 503 without AI and validates the request', async () => {
+  const off = await call(createApiMiddleware({}), { method: 'POST', url: '/api/interview/feedback', body: feedbackBody() });
+  assert.equal(off.status, 503);
+  assert.equal(off.body.error, 'ai_unavailable');
+
+  const short = await call(createApiMiddleware({ GEMINI_API_KEY: 'k' }), { method: 'POST', url: '/api/interview/feedback', body: { ...feedbackBody(), answer: 'Too short.' } });
+  assert.equal(short.status, 400);
+  assert.equal(short.body.error, 'invalid_request');
+
+  const wrongMethod = await call(createApiMiddleware({ GEMINI_API_KEY: 'k' }), { url: '/api/interview/feedback' });
+  assert.equal(wrongMethod.status, 405);
+});
+
+test('interview feedback sends only the needed fields and returns a cleaned reply', async () => {
+  let sent = null;
+  globalThis.fetch = async (url, init) => {
+    assert.ok(!String(url).includes('k-9'), 'key is sent as a header, not in the URL');
+    assert.equal(init.headers['x-goog-api-key'], 'k-9');
+    sent = JSON.parse(JSON.parse(init.body).contents[0].parts[0].text);
+    return geminiReply({ verdict: 'solid', summary: '**Clear** story.', strengths: ['You name your own action'], improvements: ['Add the result in numbers'], strongerOpening: '' });
+  };
+  const result = await call(createApiMiddleware({ GEMINI_API_KEY: 'k-9' }), { method: 'POST', url: '/api/interview/feedback', body: { ...feedbackBody(), userId: 'u1' } });
+  assert.equal(result.status, 200);
+  assert.deepEqual(Object.keys(sent), ['role', 'questionType', 'question', 'strongAnswerCovers', 'answer']);
+  assert.equal(sent.questionType, 'Behavioral');
+  assert.equal(result.body.feedback.summary, 'Clear story.');
+  assert.equal(result.body.feedback.strongerOpening, null);
+});
+
+test('interview feedback rejects malformed model output without leaking it', async () => {
+  globalThis.fetch = async () => geminiReply({ verdict: 'hired', summary: 'secret internal note', strengths: [], improvements: [] });
+  const result = await call(createApiMiddleware({ GEMINI_API_KEY: 'k' }), { method: 'POST', url: '/api/interview/feedback', body: feedbackBody() });
+  assert.equal(result.status, 502);
+  assert.equal(result.body.error, 'ai_invalid_response');
+  assert.ok(!JSON.stringify(result.body).includes('secret'));
 });

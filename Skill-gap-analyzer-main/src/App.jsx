@@ -24,9 +24,19 @@ const Roadmap = lazy(() => import('./pages/Roadmap'));
 const Projects = lazy(() => import('./pages/Projects'));
 const Assessments = lazy(() => import('./pages/Assessments'));
 const AssessmentRunner = lazy(() => import('./pages/AssessmentRunner'));
+const VerificationLab = lazy(() => import('./pages/VerificationLab'));
+const ChallengeRunner = lazy(() => import('./pages/ChallengeRunner'));
 const Jobs = lazy(() => import('./pages/Jobs'));
+const Applications = lazy(() => import('./pages/Applications'));
+const ApplicationDetail = lazy(() => import('./pages/ApplicationDetail'));
+const ResumeTailor = lazy(() => import('./pages/ResumeTailor'));
+const StudyCalendar = lazy(() => import('./pages/StudyCalendar'));
+const MarketInsights = lazy(() => import('./pages/MarketInsights'));
+const Portfolio = lazy(() => import('./pages/Portfolio'));
+const PublicPortfolio = lazy(() => import('./pages/PublicPortfolio'));
 const Simulator = lazy(() => import('./pages/Simulator'));
 const Interview = lazy(() => import('./pages/Interview'));
+const MockInterview = lazy(() => import('./pages/MockInterview'));
 const GitHubAnalyzer = lazy(() => import('./pages/GitHubAnalyzer'));
 const Progress = lazy(() => import('./pages/Progress'));
 const Resources = lazy(() => import('./pages/Resources'));
@@ -64,6 +74,7 @@ const App = () => (
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
+      <Route path="/p/:slug" element={page(<PublicPortfolio />)} />
 
       {/* Onboarding runs full-screen, outside the app shell */}
       <Route
@@ -92,12 +103,22 @@ const App = () => (
         <Route path="/projects" element={page(<Projects />)} />
         <Route path="/projects/:projectId" element={page(<Projects />)} />
         <Route path="/assessments" element={page(<Assessments />)} />
+        <Route path="/assessments/lab" element={page(<VerificationLab />)} />
+        <Route path="/assessments/lab/:challengeId" element={page(<ChallengeRunner />)} />
         <Route path="/assessments/:skillId" element={page(<AssessmentRunner />)} />
         <Route path="/jobs" element={page(<Jobs />)} />
         <Route path="/jobs/simulator" element={page(<Simulator />)} />
+        <Route path="/applications" element={page(<Applications />)} />
+        <Route path="/applications/:id" element={page(<ApplicationDetail />)} />
+        <Route path="/resume" element={page(<ResumeTailor />)} />
+        <Route path="/calendar" element={page(<StudyCalendar />)} />
+        <Route path="/market" element={page(<MarketInsights />)} />
+        <Route path="/portfolio" element={page(<Portfolio />)} />
         <Route path="/careers" element={page(<Careers />)} />
         <Route path="/careers/:roleId" element={page(<Careers />)} />
         <Route path="/interview" element={page(<Interview />)} />
+        <Route path="/interview/mock" element={page(<MockInterview />)} />
+        <Route path="/interview/mock/:sessionId" element={page(<MockInterview />)} />
         <Route path="/github" element={page(<GitHubAnalyzer />)} />
         <Route path="/progress" element={page(<Progress />)} />
         <Route path="/resources" element={page(<Resources />)} />

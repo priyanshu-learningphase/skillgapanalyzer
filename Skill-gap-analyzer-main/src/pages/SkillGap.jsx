@@ -24,6 +24,7 @@ import { getSkill } from '../data/skills';
 import { PRIORITY_META, STANDING_META } from '../lib/analysis';
 import { buildDependencyGraph } from '../lib/dependencyGraph';
 import { cx } from '../lib/cx';
+import ReadinessExplainer from '../components/analysis/ReadinessExplainer';
 
 const StandingColumn = ({ standing, items, onSelect }) => (
   <div className="min-w-0">
@@ -69,7 +70,7 @@ const SkillGap = () => {
   );
   const graph = useMemo(() => (role && analysis ? buildDependencyGraph(role, analysis) : null), [role, analysis]);
 
-  if (!analysis) return <NoAnalysisState />;
+  if (!analysis) return <NoAnalysisState page="Skill Gap Analysis" />;
 
   const overrides = career.roadmapOverrides || {};
   const selectedId = params.get('skill');
@@ -126,7 +127,7 @@ const SkillGap = () => {
                 at <span className="font-medium text-ink">{role.company.name}</span>
               </>
             )}
-            .
+            . <ReadinessExplainer className="ml-1 align-middle" label="How readiness is calculated" />
           </>
         }
         actions={

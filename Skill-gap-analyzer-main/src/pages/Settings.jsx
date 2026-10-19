@@ -17,6 +17,7 @@ import { useToast } from '../context/ToastContext';
 import { getAiStatus } from '../services/aiService';
 import { ROLES } from '../data/roles';
 import CompanyPicker from '../components/careers/CompanyPicker';
+import BackupControls from '../components/settings/BackupControls';
 import { BRANCHES, DAILY_TIME_OPTIONS, EXPERIENCE_LEVELS, TIMELINE_OPTIONS, YEARS } from '../data/options';
 
 const Section = ({ title, description, children }) => (
@@ -264,6 +265,11 @@ const Settings = () => {
               {isLocalMode ? <HardDrive className="h-4 w-4 text-muted" aria-hidden /> : <Cloud className="h-4 w-4 text-muted" aria-hidden />}
               {isLocalMode ? 'Local browser storage — clearing site data will remove it.' : 'Cloud sync across devices.'}
             </p>
+            <div>
+              <p className="text-sm font-medium text-ink">Backup</p>
+              <p className="mb-2 mt-0.5 text-xs text-muted">{isLocalMode ? 'Download a copy of everything, or move your data to another browser or into an account later.' : 'Download a copy of everything, or restore one, e.g. from your browser-only data.'}</p>
+              <BackupControls />
+            </div>
             <div className="flex flex-wrap gap-2">
               <Button variant="danger" onClick={() => setConfirmReset(true)} disabled={!career && !roadmap}>
                 Reset all data

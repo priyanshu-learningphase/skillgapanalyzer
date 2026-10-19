@@ -39,7 +39,7 @@ const Simulator = () => {
     [roleId, career, signals],
   );
 
-  if (!analysis || !result) return <NoAnalysisState title="Add your skills first" description="The simulator uses your skill profile to estimate your match and preparation time." />;
+  if (!analysis || !result) return <NoAnalysisState page="Career Simulator" title="Add your skills first" description="The simulator uses your skill profile to estimate your match and preparation time." />;
 
   const isCurrent = career.targetRoleId === roleId && (career.targetCompany?.id || null) === (company?.id || null) && (career.targetCompany?.name || null) === (company?.name || null);
   const title = `${ROLE_MAP[roleId].name}${result.company ? ` at ${result.company.name}` : ''}`;

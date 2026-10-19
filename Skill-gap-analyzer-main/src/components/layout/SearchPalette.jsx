@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { Search, CornerDownLeft, Compass, Route, BookOpen, UserCircle2, TrendingUp, FileText, Shuffle, FolderGit2, GraduationCap } from 'lucide-react';
+import { Search, CornerDownLeft, Compass, Route, BookOpen, FileText, Shuffle, FolderGit2, GraduationCap, FlaskConical } from 'lucide-react';
 import { PROJECTS } from '../../data/projects';
 import { ASSESSMENT_SKILL_IDS } from '../../data/assessments/index';
+import { CHALLENGES, DIFFICULTY_META } from '../../data/challenges/index';
 import { NAV_ITEMS } from './Sidebar';
 import { ROLES } from '../../data/roles';
 import { SKILLS } from '../../data/skills';
@@ -34,13 +35,13 @@ const SearchPalette = ({ open, onClose }) => {
     const match = (...fields) => !q || fields.some((f) => f && f.toLowerCase().includes(q));
     const pages = [
       ...NAV_ITEMS,
-      { to: '/skills/resume', label: 'Resume Analyzer', icon: FileText },
+      { to: '/skills/resume', label: 'Resume vs target role', icon: FileText },
       { to: '/jobs/simulator', label: 'Career Simulator', icon: Shuffle },
+      { to: '/assessments/lab', label: 'Practical skill lab', icon: FlaskConical },
       { to: '/careers', label: 'Role matches', icon: Compass },
-      { to: '/progress', label: 'Progress', icon: TrendingUp },
       { to: '/resources', label: 'Resources', icon: BookOpen },
-      { to: '/profile', label: 'Profile & settings', icon: UserCircle2 },
     ]
+      .filter((p, i, all) => all.findIndex((x) => x.to === p.to) === i)
       .filter((p) => match(p.label))
       .map((p) => ({ id: `page:${p.to}`, label: p.label, to: p.to, icon: p.icon, hint: 'Page' }));
     const phases = (roadmap?.phases || [])
@@ -65,11 +66,16 @@ const SearchPalette = ({ open, onClose }) => {
           .slice(0, 4)
           .map((s) => ({ id: `assess:${s.id}`, label: `${s.name} assessment`, to: `/assessments/${s.id}`, icon: GraduationCap, hint: '8 questions' }))
       : [];
+    const challenges = q
+      ? CHALLENGES.filter((c) => match(c.title, SKILLS.find((s) => s.id === c.skillId)?.name))
+          .slice(0, 4)
+          .map((c) => ({ id: `lab:${c.id}`, label: c.title, to: `/assessments/lab/${c.id}`, icon: FlaskConical, hint: `Lab · ${DIFFICULTY_META[c.difficulty].label}` }))
+      : [];
     return [
       { title: 'Pages', items: pages },
       { title: 'Roadmap', items: phases },
       { title: 'Projects', items: projects },
-      { title: 'Assessments', items: assessments },
+      { title: 'Assessments', items: [...assessments, ...challenges] },
       { title: 'Career paths', items: careers },
       { title: 'Skills & resources', items: skills },
     ].filter((g) => g.items.length);

@@ -1,27 +1,34 @@
 import { ScanSearch, Target } from 'lucide-react';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
+import PageHeader from '../ui/PageHeader';
 import { EmptyState } from '../ui/States';
 
-/** Shown on any page that needs an analysis when the user hasn't done one. */
-export const NoAnalysisState = ({ title = 'No career selected yet', description = 'Pick a target role and add your skills to see your readiness, gaps and roadmap.' }) => (
-  <Card>
-    <EmptyState
-      icon={Target}
-      title={title}
-      description={description}
-      action={
-        <Button to="/onboarding" icon={ScanSearch}>
-          Analyze Skills
-        </Button>
-      }
-      secondaryAction={
-        <Button to="/careers" variant="secondary">
-          Explore career paths
-        </Button>
-      }
-    />
-  </Card>
+/**
+ * Shown on any page that needs an analysis when the user hasn't done one.
+ * `page` keeps the page's own heading so the page still has an h1.
+ */
+export const NoAnalysisState = ({ page, title = 'No career selected yet', description = 'Pick a target role and add your skills to see your readiness, gaps and roadmap.' }) => (
+  <>
+    {page && <PageHeader title={page} />}
+    <Card>
+      <EmptyState
+        icon={Target}
+        title={title}
+        description={description}
+        action={
+          <Button to="/onboarding" icon={ScanSearch}>
+            Analyze Skills
+          </Button>
+        }
+        secondaryAction={
+          <Button to="/careers" variant="secondary">
+            Explore career paths
+          </Button>
+        }
+      />
+    </Card>
+  </>
 );
 
 export default NoAnalysisState;

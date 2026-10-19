@@ -24,6 +24,13 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 3000,
     },
+    // Lazy-loaded libraries: pre-bundle them so first use doesn't reload the dev page.
+    optimizeDeps: {
+      include: ['jszip', 'jspdf', 'sql.js'],
+    },
+    worker: {
+      format: 'es',
+    },
     build: {
       rollupOptions: {
         output: {

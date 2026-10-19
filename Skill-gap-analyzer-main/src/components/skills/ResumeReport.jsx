@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Check, X, Plus, FolderGit2, GraduationCap, Briefcase, Award, AlertTriangle, Lightbulb, RotateCcw } from 'lucide-react';
+import { Check, X, Plus, FolderGit2, GraduationCap, Briefcase, Award, AlertTriangle, Lightbulb, RotateCcw, Target } from 'lucide-react';
 import Card, { CardHeader, CardBody } from '../ui/Card';
 import Button from '../ui/Button';
 import ScoreRing from '../ui/ScoreRing';
@@ -62,6 +62,9 @@ const ResumeReport = ({ saved, report, role, newSkills, onImport, importing, onR
             ) : (
               <span className="text-xs text-muted">All detected skills are in your profile</span>
             )}
+            <Button variant="secondary" size="sm" icon={Target} to="/resume">
+              Tailor for a specific job
+            </Button>
             <Button variant="ghost" size="sm" icon={RotateCcw} onClick={onReset}>
               Analyse another resume
             </Button>

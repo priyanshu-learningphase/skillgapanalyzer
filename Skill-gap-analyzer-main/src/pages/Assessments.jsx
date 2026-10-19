@@ -12,6 +12,7 @@ import ProgressBar from '../components/ui/ProgressBar';
 import PriorityBadge from '../components/ui/PriorityBadge';
 import { EmptyState } from '../components/ui/States';
 import { NoAnalysisState } from '../components/common/WorkspaceEmpty';
+import AssessmentTabs from '../components/lab/AssessmentTabs';
 import { useWorkspace } from '../context/WorkspaceContext';
 import { ASSESSMENT_SKILL_IDS, PASS_PCT } from '../data/assessments/index';
 import { getSkill } from '../data/skills';
@@ -23,7 +24,7 @@ const rank = (item) => (item.priority ? PRIORITY_ORDER.indexOf(item.priority) : 
 
 const Assessments = () => {
   const { analysis, role, progress, latestAssessments } = useWorkspace();
-  if (!analysis) return <NoAnalysisState title="No assessments yet" description="Analyze your skills first — we’ll recommend which skills to prove." />;
+  if (!analysis) return <NoAnalysisState page="Assessments" title="No assessments yet" description="Analyze your skills first — we’ll recommend which skills to prove." />;
 
   const levels = analysis.levels;
   const roleItems = analysis.items
@@ -70,7 +71,8 @@ const Assessments = () => {
 
   return (
     <div>
-      <PageHeader title="Assessments" description="8-question, auto-graded checks. Your score updates your skill level and adapts your roadmap." />
+      <PageHeader title="Assessments" description="Quizzes check what you know. Practical challenges prove you can do it — and count as the strongest evidence for a skill." />
+      <AssessmentTabs />
 
       <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
         {[

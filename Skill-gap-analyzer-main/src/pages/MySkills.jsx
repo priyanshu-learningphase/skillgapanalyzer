@@ -4,13 +4,12 @@
 
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { PencilLine, FileText, Github, GraduationCap, Puzzle, Plus } from 'lucide-react';
+import { PencilLine, FileText, Github, Puzzle, Plus } from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
 import Tabs from '../components/ui/Tabs';
 import Card, { CardHeader, CardBody } from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import ProgressBar from '../components/ui/ProgressBar';
-import Badge from '../components/ui/Badge';
 import { EmptyState } from '../components/ui/States';
 import EditSkillsModal from '../components/analysis/EditSkillsModal';
 import ResumeAnalyzer from '../components/skills/ResumeAnalyzer';
@@ -20,9 +19,11 @@ import { useToast } from '../context/ToastContext';
 import { getSkill, SKILL_CATEGORIES } from '../data/skills';
 import { hasAssessment } from '../data/assessments/index';
 import { levelName } from '../lib/analysis';
+import { evidenceFor } from '../lib/evidence';
+import EvidenceBadge from '../components/skills/EvidenceBadge';
 
 const SkillInventory = () => {
-  const { career, role, analysis, latestAssessments, actions } = useWorkspace();
+  const { career, role, analysis, evidence, actions } = useWorkspace();
   const toast = useToast();
   const [editing, setEditing] = useState(false);
 
@@ -51,7 +52,7 @@ const SkillInventory = () => {
           ['Skills tracked', career.skills.length],
           ['Advanced', career.skills.filter((s) => s.level >= 80).length],
           ['Role skills covered', `${analysis.items.filter((i) => i.current > 0).length}/${analysis.items.length}`],
-          ['Assessed', Object.keys(latestAssessments).length],
+          ['Verified', career.skills.filter((s) => evidenceFor(evidence, s.id).verified).length],
         ].map(([label, value]) => (
           <div key={label} className="card p-4">
             <p className="text-[13px] font-medium text-muted">{label}</p>
@@ -63,7 +64,7 @@ const SkillInventory = () => {
       <Card>
         <CardHeader
           title="Your skills"
-          description="Levels drive your readiness score and roadmap. Assessments turn estimates into evidence."
+          description="Levels drive your readiness score and roadmap. Each skill shows what backs it: self-reported, project, quiz or practical."
           action={
             <Button variant="secondary" size="sm" icon={PencilLine} onClick={() => setEditing(true)}>
               Edit skills
@@ -88,7 +89,7 @@ const SkillInventory = () => {
                   <ul className="divide-y divide-line rounded-lg border border-line">
                     {skills.map((s) => {
                       const req = required.get(s.id);
-                      const assessment = latestAssessments[s.id];
+                      const proof = evidenceFor(evidence, s.id);
                       return (
                         <li key={s.id} className="grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-2 px-4 py-3 md:grid-cols-[minmax(0,12rem)_1fr_7rem_9rem]">
                           <div className="min-w-0">
@@ -103,17 +104,12 @@ const SkillInventory = () => {
                           <div className="col-span-2 md:order-2 md:col-span-1">
                             <ProgressBar value={s.level} marker={req?.required} size="sm" tone={req && s.level >= req.required ? 'success' : 'accent'} label={`${s.name} level`} />
                           </div>
-                          <div className="col-span-2 md:order-4 md:col-span-1 md:text-right">
-                            {assessment ? (
-                              <Badge tone={assessment.pct >= 70 ? 'success' : 'warning'} icon={GraduationCap}>
-                                Assessed {assessment.pct}%
-                              </Badge>
-                            ) : hasAssessment(s.id) ? (
-                              <Link to={`/assessments/${s.id}`} className="text-xs font-medium text-accent-600 hover:text-accent-700">
-                                Take assessment →
+                          <div className="col-span-2 flex items-center gap-2 md:order-4 md:col-span-1 md:justify-end">
+                            <EvidenceBadge level={proof.level} short />
+                            {!proof.verified && hasAssessment(s.id) && (
+                              <Link to={`/assessments/${s.id}`} className="text-xs font-medium text-accent-600 hover:text-accent-700" aria-label={`Verify ${s.name} with an assessment`}>
+                                Verify →
                               </Link>
-                            ) : (
-                              <span className="text-xs text-muted-light">Self-rated</span>
                             )}
                           </div>
                         </li>
@@ -182,7 +178,7 @@ const SkillInventory = () => {
 
 const MySkills = ({ tab = 'skills' }) => {
   const { isOnboarded, insights } = useWorkspace();
-  if (!isOnboarded) return <NoAnalysisState />;
+  if (!isOnboarded) return <NoAnalysisState page="My Skills" />;
   return (
     <div>
       <PageHeader title="My Skills" description="Everything you know, how well you know it, and the evidence behind it." />

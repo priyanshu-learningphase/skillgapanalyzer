@@ -10,6 +10,8 @@
  *      roadmaps/{uid}              active roadmap
  *      progress/{uid}              completed tasks, hours, streak, assessments, projects
  *      insights/{uid}              resume, job description and GitHub analyses
+ *      applications/{uid}          job application tracker
+ *      schedules/{uid}             study calendar settings, events and plan
  *  - localStorage (local mode, no account required)
  */
 
@@ -28,6 +30,8 @@ import {
 } from 'firebase/firestore';
 import { db, firebaseEnabled } from '../config/firebase';
 import { normalizeInsights, normalizeProgress } from '../lib/progress';
+import { normalizeTracker } from '../lib/applications';
+import { normalizeSchedule } from '../lib/schedule';
 
 const MAX_ANALYSES = 30;
 
@@ -46,11 +50,13 @@ const toIso = (value) => {
 
 const firestoreRepository = {
   async load(uid) {
-    const [userSnap, roadmapSnap, progressSnap, insightsSnap, analysesSnap] = await Promise.all([
+    const [userSnap, roadmapSnap, progressSnap, insightsSnap, trackerSnap, scheduleSnap, analysesSnap] = await Promise.all([
       getDoc(doc(db, 'users', uid)),
       getDoc(doc(db, 'roadmaps', uid)),
       getDoc(doc(db, 'progress', uid)),
       getDoc(doc(db, 'insights', uid)),
+      getDoc(doc(db, 'applications', uid)),
+      getDoc(doc(db, 'schedules', uid)),
       // Filter only (no orderBy) so no composite index is required.
       getDocs(query(collection(db, 'skill_analysis'), where('userId', '==', uid))),
     ]);
@@ -66,6 +72,8 @@ const firestoreRepository = {
       roadmap: roadmapSnap.exists() ? roadmapSnap.data().roadmap || null : null,
       progress: normalizeProgress(progressSnap.exists() ? progressSnap.data() : null),
       insights: normalizeInsights(insightsSnap.exists() ? insightsSnap.data() : null),
+      tracker: normalizeTracker(trackerSnap.exists() ? trackerSnap.data() : null),
+      schedule: normalizeSchedule(scheduleSnap.exists() ? scheduleSnap.data() : null),
     };
   },
 
@@ -107,6 +115,22 @@ const firestoreRepository = {
     await setDoc(doc(db, 'insights', uid), { ...clean(insights), updatedAt: serverTimestamp() });
   },
 
+  async saveTracker(uid, tracker) {
+    await setDoc(doc(db, 'applications', uid), { ...clean(tracker), updatedAt: serverTimestamp() });
+  },
+
+  async saveSchedule(uid, schedule) {
+    await setDoc(doc(db, 'schedules', uid), { ...clean(schedule), updatedAt: serverTimestamp() });
+  },
+
+  /** Restore analysis snapshots from a backup (keeps their original dates). */
+  async importAnalyses(uid, analyses) {
+    for (const snapshot of analyses.slice(0, MAX_ANALYSES)) {
+      const { id, userId, ...rest } = snapshot;
+      await addDoc(collection(db, 'skill_analysis'), { ...clean(rest), userId: uid });
+    }
+  },
+
   async reset(uid) {
     const analyses = await getDocs(query(collection(db, 'skill_analysis'), where('userId', '==', uid)));
     await Promise.all([
@@ -114,6 +138,8 @@ const firestoreRepository = {
       deleteDoc(doc(db, 'roadmaps', uid)),
       deleteDoc(doc(db, 'progress', uid)),
       deleteDoc(doc(db, 'insights', uid)),
+      deleteDoc(doc(db, 'applications', uid)),
+      deleteDoc(doc(db, 'schedules', uid)),
       setDoc(doc(db, 'users', uid), { career: deleteField(), career_interest: '', skills: [] }, { merge: true }),
     ]);
   },
@@ -154,6 +180,8 @@ const localRepository = {
       roadmap: data.roadmap || null,
       progress: normalizeProgress(data.progress),
       insights: normalizeInsights(data.insights),
+      tracker: normalizeTracker(data.tracker),
+      schedule: normalizeSchedule(data.schedule),
     };
   },
   async saveCareer(uid, career) {
@@ -177,6 +205,16 @@ const localRepository = {
   },
   async saveInsights(uid, insights) {
     writeLocal(uid, { insights: clean(insights) });
+  },
+  async saveTracker(uid, tracker) {
+    writeLocal(uid, { tracker: clean(tracker) });
+  },
+  async saveSchedule(uid, schedule) {
+    writeLocal(uid, { schedule: clean(schedule) });
+  },
+  async importAnalyses(uid, analyses) {
+    const entries = analyses.slice(0, MAX_ANALYSES).map((a) => ({ ...clean(a), userId: uid }));
+    writeLocal(uid, { analyses: entries });
   },
   async reset(uid) {
     try {

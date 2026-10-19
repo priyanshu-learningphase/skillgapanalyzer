@@ -3,7 +3,7 @@
  */
 
 import { Link } from 'react-router-dom';
-import { ArrowRight, Target, FileText, Github, ScanSearch, Route, RefreshCw, ArrowUpRight, Building2, CalendarCheck } from 'lucide-react';
+import { ArrowRight, Target, FileText, Github, ScanSearch, Route, RefreshCw, Building2, CalendarCheck, Flag, GraduationCap, CheckCircle2, AlertTriangle } from 'lucide-react';
 import Card, { CardHeader, CardBody } from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Stat from '../components/ui/Stat';
@@ -14,11 +14,18 @@ import DistributionBar from '../components/ui/DistributionBar';
 import PriorityBadge from '../components/ui/PriorityBadge';
 import { EmptyState } from '../components/ui/States';
 import WeekPlan from '../components/dashboard/WeekPlan';
+import TodayPlan from '../components/dashboard/TodayPlan';
+import { useStudySchedule } from '../hooks/useStudySchedule';
 import { readinessBand } from '../components/analysis/ReadinessCard';
+import ReadinessExplainer from '../components/analysis/ReadinessExplainer';
+import { UpcomingList } from '../components/applications/parts';
 import { useAuth } from '../context/AuthContext';
 import { useWorkspace } from '../context/WorkspaceContext';
 import { greetingFor } from '../lib/progress';
 import { buildWeekPlan } from '../lib/weekPlan';
+import { applicationStats, upcomingItems } from '../lib/applications';
+import { relativeTime } from '../lib/progress';
+import { formatWeeks } from '../lib/roadmap';
 import { cx } from '../lib/cx';
 
 const FLOW = [
@@ -71,8 +78,9 @@ const shortDate = (iso) => (iso ? new Date(iso).toLocaleDateString(undefined, { 
 
 const Dashboard = () => {
   const { userProfile } = useAuth();
-  const { role, analysis, readinessDelta, readinessHistory, roadmap, roadmapState, stats, progress, isOnboarded, latestAssessments, actions } = useWorkspace();
+  const { role, analysis, readinessDelta, readinessHistory, roadmap, roadmapState, stats, progress, isOnboarded, latestAssessments, tracker, actions } = useWorkspace();
   const firstName = userProfile?.name?.split(' ')[0];
+  const calendar = useStudySchedule();
 
   if (!isOnboarded) return <Welcome name={firstName} />;
 
@@ -85,6 +93,13 @@ const Dashboard = () => {
   const passedCount = assessments.filter((a) => a.pct >= 70).length;
   const weekItems = buildWeekPlan({ roadmap: roadmapState === 'role-changed' ? null : roadmap, completedTasks: progress.completedTasks, weekChecks: progress.weekChecks, analysis });
   const keySkills = [...analysis.items].sort((a, b) => b.weight - a.weight || b.gap - a.gap).slice(0, 6);
+  const appStats = applicationStats(tracker.applications);
+  const upcoming = upcomingItems(tracker.applications);
+  const liveRoadmap = roadmap && roadmapState !== 'role-changed' && roadmap.status !== 'paused' ? roadmap : null;
+  // Current milestone: the first phase with unfinished tasks.
+  const milestone = liveRoadmap?.phases.find((ph) => ph.tasks.some((t) => !progress.completedTasks[t.id])) || null;
+  const milestoneDone = milestone ? milestone.tasks.filter((t) => progress.completedTasks[t.id]).length : 0;
+  const recent = (progress.assessments || []).slice(0, 4);
   const trend = readinessHistory.map((h) => ({ value: h.readiness_score, label: shortDate(h.createdAt) }));
   if (!trend.length || trend[trend.length - 1].value !== analysis.readiness) trend.push({ value: analysis.readiness, label: 'Now' });
 
@@ -126,6 +141,7 @@ const Dashboard = () => {
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-muted">Career Readiness</p>
               <p className="mt-0.5 text-lg font-semibold text-ink">{band.label}</p>
+              <ReadinessExplainer className="mt-1" />
               <dl className="mt-3 grid grid-cols-3 gap-3 text-sm">
                 <div>
                   <dt className="text-xs text-muted">Previous</dt>
@@ -191,9 +207,13 @@ const Dashboard = () => {
 
       {/* Stats */}
       <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-        <Stat label="Skills completed" value={analysis.counts.met} hint={`of ${analysis.items.length} required`} />
-        <Stat label="Skills remaining" value={analysis.gaps.length} hint={analysis.counts.critical ? `${analysis.counts.critical} critical` : 'none critical'} />
+        <Stat label="Skills at target" value={analysis.counts.met} hint={`of ${analysis.items.length} · ${analysis.counts.critical || 'no'} critical gap${analysis.counts.critical === 1 ? '' : 's'}`} />
         <Stat label="Roadmap progress" value={stats ? stats.pct : '—'} unit={stats ? '%' : ''} hint={stats ? `${stats.phasesDone}/${stats.phasesTotal} milestones` : 'No roadmap yet'} />
+        <Stat
+          label="Applications"
+          value={appStats.active}
+          hint={appStats.total ? `active · ${appStats.submitted} submitted${appStats.offers ? ` · ${appStats.offers} offer${appStats.offers === 1 ? '' : 's'}` : ''}` : <Link to="/applications" className="hover:text-ink">Track one →</Link>}
+        />
         <Stat label="Projects completed" value={projectsDone} hint={<Link to="/projects" className="hover:text-ink">View projects →</Link>} />
         <Stat label="Assessments passed" value={passedCount} hint={assessments.length ? `${assessments.length} taken` : <Link to="/assessments" className="hover:text-ink">Take one →</Link>} className="col-span-2 sm:col-span-1" />
       </div>
@@ -202,10 +222,10 @@ const Dashboard = () => {
         {/* This week */}
         <Card>
           <CardHeader
-            title="This week"
+            title={calendar.schedule.configured ? 'Study plan' : 'This week'}
             icon={CalendarCheck}
-            description={roadmap && roadmapState !== 'role-changed' ? `Sized to your ${roadmap.settings.weeklyHours}h weekly budget` : undefined}
-            action={roadmap && <Button variant="link" to="/roadmap">Roadmap</Button>}
+            description={roadmap && roadmapState !== 'role-changed' ? (calendar.schedule.configured ? 'From your study calendar' : `Sized to your ${roadmap.settings.weeklyHours}h weekly budget`) : undefined}
+            action={roadmap && <Button variant="link" to={calendar.schedule.configured ? '/calendar' : '/roadmap'}>{calendar.schedule.configured ? 'Calendar' : 'Roadmap'}</Button>}
           />
           <CardBody>
             {!roadmap || roadmapState === 'role-changed' ? (
@@ -222,9 +242,16 @@ const Dashboard = () => {
               />
             ) : roadmap.status === 'paused' ? (
               <EmptyState compact title="Your roadmap is paused" description="Resume it to see this week’s plan." action={<Button to="/roadmap">Open roadmap</Button>} />
+            ) : calendar.schedule.configured ? (
+              <TodayPlan built={calendar.built} today={calendar.today} completedTasks={progress.completedTasks} onToggleTask={actions.toggleTask} missedCount={calendar.missed.length} />
             ) : weekItems.length ? (
               <>
                 <WeekPlan items={weekItems} onToggleTask={actions.toggleTask} onToggleHabit={actions.toggleWeekCheck} />
+                <p className="mt-3 text-xs text-muted">
+                  <Link to="/calendar" className="font-medium text-ink hover:underline">
+                    Plan these around your real week →
+                  </Link>
+                </p>
                 {roadmapState === 'stale' && (
                   <p className="mt-3 flex items-center gap-2 text-xs text-muted">
                     <RefreshCw className="h-3.5 w-3.5" aria-hidden /> Your skills changed —{' '}
@@ -240,35 +267,65 @@ const Dashboard = () => {
           </CardBody>
         </Card>
 
-        <div className="space-y-4">
-          <Card>
-            <CardHeader title="Career readiness over time" action={<Button variant="link" to="/progress">Progress</Button>} />
-            <CardBody>
-              {trend.length >= 2 ? (
-                <LineChart points={trend} target={90} targetLabel="90 = job-ready" ariaLabel="Career readiness over time" format={(v) => `${v}/100`} />
-              ) : (
-                <p className="text-sm text-muted">Your trend appears after your next check-in, assessment or completed phase.</p>
-              )}
-            </CardBody>
-          </Card>
-          {stats && roadmapState !== 'role-changed' && (
-            <Card className="p-5">
-              <div className="flex items-baseline justify-between">
-                <p className="text-sm font-medium text-ink">Roadmap completion</p>
-                <Link to="/roadmap" className="inline-flex items-center gap-1 text-xs text-muted hover:text-ink">
-                  Open <ArrowUpRight className="h-3 w-3" aria-hidden />
-                </Link>
-              </div>
-              <DistributionBar
-                className="mt-3"
-                segments={[
-                  { label: 'Completed', value: stats.doneTasks, color: 'bg-success' },
-                  { label: 'Remaining', value: stats.totalTasks - stats.doneTasks, color: 'bg-slate-200' },
-                ]}
-              />
-            </Card>
-          )}
-        </div>
+        <Card>
+          <CardHeader title="Coming up" icon={Flag} action={upcoming.length ? <Button variant="link" to="/applications">Applications</Button> : null} />
+          <CardBody className="space-y-4">
+            {milestone ? (
+              <Link to={`/roadmap/${milestone.id}`} className="block rounded-lg border border-line p-3 hover:border-slate-300">
+                <p className="text-xs text-muted">Current milestone · {formatWeeks(milestone)}</p>
+                <p className="mt-0.5 truncate text-sm font-medium text-ink">{milestone.title}</p>
+                <div className="mt-2 flex items-center gap-2">
+                  <ProgressBar value={milestoneDone} max={milestone.tasks.length} size="sm" label={`${milestone.title} progress`} />
+                  <span className="tabular shrink-0 text-xs text-muted">
+                    {milestoneDone}/{milestone.tasks.length}
+                  </span>
+                </div>
+              </Link>
+            ) : (
+              <p className="text-sm text-muted">{liveRoadmap ? 'Every milestone is done.' : 'Generate a roadmap to see your current milestone.'}</p>
+            )}
+            <div>
+              <p className="mb-1 text-xs font-medium text-muted">Deadlines & interviews</p>
+              <UpcomingList items={upcoming} limit={4} empty={tracker.applications.length ? 'Nothing due in the next two weeks.' : 'Track applications to see deadlines and interviews here.'} />
+            </div>
+          </CardBody>
+        </Card>
+      </div>
+
+      <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_1.15fr]">
+        <Card>
+          <CardHeader title="Recent results" icon={GraduationCap} action={<Button variant="link" to="/assessments">Assessments</Button>} />
+          <CardBody>
+            {recent.length ? (
+              <ul className="space-y-2.5">
+                {recent.map((a) => (
+                  <li key={a.id} className="flex items-center gap-3 text-sm">
+                    {a.pct >= 70 ? <CheckCircle2 className="h-4 w-4 shrink-0 text-success-600" aria-label="Passed" /> : <AlertTriangle className="h-4 w-4 shrink-0 text-warning-600" aria-label="Not passed" />}
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-ink">{a.name}</span>
+                      <span className="block text-xs text-muted">
+                        {a.correct}/{a.total} · level {a.before}% → {a.after}% · {relativeTime(a.at)}
+                      </span>
+                    </span>
+                    <span className="tabular text-sm font-semibold text-ink">{a.pct}%</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <EmptyState compact icon={GraduationCap} title="No results yet" description="Take an assessment to turn self-ratings into evidence." action={<Button to="/assessments" size="sm">Browse assessments</Button>} />
+            )}
+          </CardBody>
+        </Card>
+        <Card>
+          <CardHeader title="Career readiness over time" action={<Button variant="link" to="/progress">Progress</Button>} />
+          <CardBody>
+            {trend.length >= 2 ? (
+              <LineChart points={trend} target={90} targetLabel="90 = job-ready" ariaLabel="Career readiness over time" format={(v) => `${v}/100`} />
+            ) : (
+              <p className="text-sm text-muted">Your trend appears after your next check-in, assessment or completed phase.</p>
+            )}
+          </CardBody>
+        </Card>
       </div>
     </div>
   );

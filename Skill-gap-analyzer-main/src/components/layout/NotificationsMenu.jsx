@@ -1,9 +1,11 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Bell, RefreshCw, PauseCircle, Flame, Route, ScanSearch, Inbox } from 'lucide-react';
+import { Bell, RefreshCw, PauseCircle, Flame, Route, ScanSearch, Inbox, CalendarDays, AlertTriangle, MessagesSquare } from 'lucide-react';
 import Popover from '../ui/Popover';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { currentStreak, dayKey, relativeTime } from '../../lib/progress';
+import { useStudySchedule } from '../../hooks/useStudySchedule';
+import { upcomingItems } from '../../lib/applications';
 import { cx } from '../../lib/cx';
 
 /**
@@ -11,7 +13,8 @@ import { cx } from '../../lib/cx';
  * attention now) plus your recent activity feed.
  */
 const useNudges = () => {
-  const { isOnboarded, roadmap, roadmapState, progress, role } = useWorkspace();
+  const { isOnboarded, roadmap, roadmapState, progress, role, tracker } = useWorkspace();
+  const calendar = useStudySchedule();
   return useMemo(() => {
     const nudges = [];
     if (!isOnboarded) {
@@ -28,12 +31,22 @@ const useNudges = () => {
     if (roadmap?.status === 'paused') {
       nudges.push({ id: 'paused', icon: PauseCircle, title: 'Your roadmap is paused', body: 'Resume when you’re ready to continue.', to: '/roadmap' });
     }
+    // Reminders from the study calendar and the application tracker.
+    if (calendar.schedule.configured) {
+      const today = calendar.built.days.find((d) => d.date === calendar.today);
+      const open = (today?.sessions || []).filter((s) => s.kind === 'prep' || !progress.completedTasks[s.taskId]);
+      if (open.length) nudges.push({ id: 'today-sessions', icon: CalendarDays, title: `${open.length} study session${open.length === 1 ? '' : 's'} today`, body: open.map((s) => s.title).slice(0, 2).join(' · '), to: '/calendar' });
+      if (calendar.missed.length) nudges.push({ id: 'missed', icon: AlertTriangle, title: `${calendar.missed.length} missed session${calendar.missed.length === 1 ? '' : 's'}`, body: 'Reschedule them into your next free slots.', to: '/calendar' });
+    }
+    for (const item of upcomingItems(tracker.applications, { days: 2 }).filter((i) => i.kind === 'interview' || i.overdue).slice(0, 3)) {
+      nudges.push({ id: `app:${item.id}`, icon: item.kind === 'interview' ? MessagesSquare : AlertTriangle, title: item.kind === 'interview' ? `Interview ${item.days === 0 ? 'today' : item.days === 1 ? 'tomorrow' : `in ${item.days} days`}` : 'Overdue: ' + item.title, body: item.kind === 'interview' ? item.title : item.company, to: `/applications/${item.appId}` });
+    }
     const streak = currentStreak(progress.activeDates);
     if (roadmap && roadmap.status !== 'paused' && streak > 0 && !progress.activeDates.includes(dayKey())) {
       nudges.push({ id: 'streak', icon: Flame, title: `Keep your ${streak}-day streak`, body: 'Complete one task today to keep it going.', to: '/roadmap' });
     }
     return nudges;
-  }, [isOnboarded, roadmap, roadmapState, progress, role]);
+  }, [isOnboarded, roadmap, roadmapState, progress, role, tracker.applications, calendar]);
 };
 
 const NotificationsMenu = () => {

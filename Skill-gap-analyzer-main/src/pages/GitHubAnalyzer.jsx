@@ -43,7 +43,7 @@ const GitHubAnalyzer = () => {
     return recommendProjects({ analysis: portfolioGaps, roleId: role.id, level: career.level, limit: 3 });
   }, [result, analysis, role, career]);
 
-  if (!analysis) return <NoAnalysisState title="Set a goal first" description="We score your GitHub against your target role." />;
+  if (!analysis) return <NoAnalysisState page="GitHub Analyzer" title="Set a goal first" description="We score your GitHub against your target role." />;
 
   const save = async (next) => {
     await actions.saveInsight('github', next);

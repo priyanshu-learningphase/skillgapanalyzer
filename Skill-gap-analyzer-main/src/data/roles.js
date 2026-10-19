@@ -10,6 +10,18 @@
 import { getSkill } from './skills.js';
 import { applyCompany } from './companies.js';
 
+/**
+ * Version of the role requirement profiles below. Bump `version` and
+ * `reviewedAt` whenever requirements or levels change, so users can see how
+ * current the profile behind their score is.
+ */
+export const ROLE_PROFILE_META = {
+  version: '2026.10',
+  reviewedAt: '2026-10-14',
+  basis:
+    'Curated requirement profiles based on common skills in entry-level job descriptions and public interview guides. They are configured by SkillGap, not computed from live job-market data.',
+};
+
 export const IMPORTANCE = {
   critical: { label: 'Critical', weight: 4 },
   high: { label: 'High', weight: 3 },

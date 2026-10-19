@@ -49,10 +49,10 @@ export const extractPdfText = async (file) => {
   }
 };
 
-/** Read a resume file: PDF via pdf.js, plain text directly. */
+/** Read a resume file: PDF via pdf.js, DOCX via JSZip, plain text directly. */
 export const readResumeFile = async (file) => {
   if (!file) throw new Error('No file selected.');
-  if (file.size > 5 * 1024 * 1024) throw new Error('That file is over 5 MB. Upload a smaller PDF.');
+  if (file.size > 5 * 1024 * 1024) throw new Error('That file is over 5 MB. Upload a smaller file.');
   const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
   if (isPdf) {
     const text = await extractPdfText(file);
@@ -61,6 +61,13 @@ export const readResumeFile = async (file) => {
     }
     return text;
   }
+  if (/\.docx$/i.test(file.name) || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+    const { extractDocxText } = await import('../lib/resumeExport');
+    const text = await extractDocxText(await file.arrayBuffer());
+    if (text.replace(/\s/g, '').length < 50) throw new Error('We couldn’t find text in this document. Try exporting it again or paste the text instead.');
+    return text;
+  }
+  if (/\.doc$/i.test(file.name)) throw new Error('Old .doc files aren’t supported. Save it as .docx or PDF and try again.');
   if (/\.(txt|md)$/i.test(file.name) || file.type.startsWith('text/')) return file.text();
-  throw new Error('Unsupported file type. Upload a PDF or a .txt file, or paste your resume text.');
+  throw new Error('Unsupported file type. Upload a PDF, DOCX or .txt file, or paste your resume text.');
 };

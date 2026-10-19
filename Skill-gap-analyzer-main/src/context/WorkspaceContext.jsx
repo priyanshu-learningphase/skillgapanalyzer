@@ -1,7 +1,8 @@
 /**
  * Workspace context
  *
- * Owns the user's career profile, analysis history, roadmap and progress.
+ * Owns the user's career profile, analysis history, roadmap, progress,
+ * insights, job applications and study schedule.
  * Analysis is always derived live from the profile (deterministic), while
  * snapshots are stored for history and campus analytics. Every mutation is
  * applied optimistically and persisted through workspaceRepository; failures
@@ -17,17 +18,36 @@ import { analyzeRole, rankCareerMatches, toAnalysisSnapshot } from '../lib/analy
 import { describeDiff, diffRoadmaps, isEmptyDiff, preserveCompletedTasks, roadmapInputsKey, roadmapStats } from '../lib/roadmap';
 import { buildCustomRole, resolveLegacyRoleId, resolveRole } from '../data/roles';
 import { findSkillByName, getSkill, makeCustomSkill } from '../data/skills';
-import { dayKey, emptyInsights, emptyProgress, makeActivity, markActive, pushActivity } from '../lib/progress';
+import { dayKey, emptyInsights, emptyProgress, makeActivity, markActive, normalizeInsights, normalizeProgress, pushActivity } from '../lib/progress';
 import { latestBySkill, levelAfterAssessment, passed, recommendationFor } from '../lib/assessment';
 import { jobToCustomRole } from '../lib/jobDescription';
 import { weekKey } from '../lib/weekPlan';
 import { PROJECT_MAP } from '../data/projects';
 import { genericProjectFor } from '../lib/projects';
 import { hasAssessment } from '../data/assessments/index';
+import { emptyTracker, normalizeTracker } from '../lib/applications';
+import { emptySchedule, normalizeSchedule } from '../lib/schedule';
+import { buildEvidence } from '../lib/evidence';
+import { levelAfterPractical } from '../lib/labGrading';
+import { MAX_MOCK_SESSIONS } from '../lib/mockInterview';
 
 const WorkspaceContext = createContext(null);
 
-const initialState = { status: 'loading', error: null, career: null, analyses: [], roadmap: null, progress: emptyProgress(), insights: emptyInsights() };
+const initialState = {
+  status: 'loading',
+  error: null,
+  career: null,
+  analyses: [],
+  roadmap: null,
+  progress: emptyProgress(),
+  insights: emptyInsights(),
+  tracker: emptyTracker(),
+  schedule: emptySchedule(),
+};
+
+/** Workspace slices saved as their own documents. */
+const PERSISTED = ['career', 'roadmap', 'progress', 'insights', 'tracker', 'schedule'];
+export const BACKUP_VERSION = 1;
 
 /** Projects can be catalog entries or generated per skill. */
 const projectById = (id) => PROJECT_MAP[id] || (id?.startsWith('skill-') ? genericProjectFor(id.slice(6)) : null);
@@ -103,6 +123,8 @@ export const WorkspaceProvider = ({ children }) => {
             if (key === 'roadmap') return repo.saveRoadmap(uid, s.roadmap);
             if (key === 'progress') return repo.saveProgress(uid, s.progress);
             if (key === 'insights') return repo.saveInsights(uid, s.insights);
+            if (key === 'tracker') return repo.saveTracker(uid, s.tracker);
+            if (key === 'schedule') return repo.saveSchedule(uid, s.schedule);
             return null;
           }),
         );
@@ -125,7 +147,7 @@ export const WorkspaceProvider = ({ children }) => {
   const commit = useCallback(
     (patch) => {
       setAll({ ...stateRef.current, ...patch });
-      return persist(Object.keys(patch).filter((k) => ['career', 'roadmap', 'progress', 'insights'].includes(k)));
+      return persist(Object.keys(patch).filter((k) => PERSISTED.includes(k)));
     },
     [persist, setAll],
   );
@@ -141,7 +163,17 @@ export const WorkspaceProvider = ({ children }) => {
       let career = data.career;
       const migrated = !career && migrateLegacy(data.legacy);
       if (migrated) career = migrated;
-      setAll({ status: 'ready', error: null, career, analyses: data.analyses, roadmap: data.roadmap, progress: data.progress, insights: data.insights });
+      setAll({
+        status: 'ready',
+        error: null,
+        career,
+        analyses: data.analyses,
+        roadmap: data.roadmap,
+        progress: data.progress,
+        insights: data.insights,
+        tracker: data.tracker || emptyTracker(),
+        schedule: data.schedule || emptySchedule(),
+      });
       if (migrated) persist(['career']);
     } catch (error) {
       console.error('Workspace load failed', error);
@@ -278,6 +310,25 @@ export const WorkspaceProvider = ({ children }) => {
     [commit],
   );
 
+  /**
+   * Update the application tracker. `updater` receives the current
+   * applications and returns the next list; an optional activity entry is
+   * recorded in the feed.
+   */
+  const updateTracker = useCallback(
+    (updater, activity) => {
+      const { tracker, progress } = stateRef.current;
+      const applications = updater(tracker.applications);
+      const patch = { tracker: { ...tracker, applications } };
+      if (activity) patch.progress = withActivity(progress, activity.type || 'application', activity.message);
+      return commit(patch);
+    },
+    [commit],
+  );
+
+  /** Update the study schedule (settings, events, pins or saved plan). */
+  const updateSchedule = useCallback((updater) => commit({ schedule: updater(stateRef.current.schedule) }), [commit]);
+
   const saveJob = useCallback(
     (job) => {
       const { insights, progress } = stateRef.current;
@@ -331,6 +382,58 @@ export const WorkspaceProvider = ({ children }) => {
     [commit, recordAnalysis],
   );
 
+  /**
+   * Record a practical lab attempt. A pass raises the skill to the
+   * difficulty's floor (never lowers it) and completes the roadmap's practice
+   * task for that skill.
+   */
+  const submitVerification = useCallback(
+    async ({ challenge, grade, passed, language, hintsUsed = 0 }) => {
+      const { career, progress, roadmap } = stateRef.current;
+      const skillName = getSkill(challenge.skillId)?.name || challenge.skillId;
+      const now = new Date().toISOString();
+      const current = career.skills.find((s) => s.id === challenge.skillId);
+      const role = resolveRole(career);
+      const before = (role ? analyzeRole(role, career.skills).levels[challenge.skillId]?.level : null) ?? current?.level ?? 0;
+      const after = levelAfterPractical(before, challenge.difficulty, passed);
+      const entry = {
+        id: newId('pv'),
+        challengeId: challenge.id,
+        skillId: challenge.skillId,
+        title: challenge.title,
+        category: challenge.category,
+        kind: challenge.kind,
+        difficulty: challenge.difficulty,
+        language: language || null,
+        passed,
+        pct: grade.pct,
+        testsPassed: grade.passed,
+        testsTotal: grade.total,
+        hintsUsed,
+        before,
+        after,
+        at: now,
+      };
+      let next = { ...progress, verifications: [entry, ...(progress.verifications || [])].slice(0, 200) };
+      let nextCareer = career;
+      if (after > before) {
+        const skills = current ? career.skills.map((s) => (s.id === challenge.skillId ? { ...s, level: after } : s)) : [...career.skills, { id: challenge.skillId, name: skillName, level: after }];
+        next = { ...next, skillHistory: [...next.skillHistory, ...skillChanges(career.skills, skills, 'practical')] };
+        nextCareer = { ...career, skills };
+      }
+      const practiceTask = `${challenge.skillId}:practice`;
+      if (passed && !next.completedTasks[practiceTask] && roadmap?.phases.some((p) => p.tasks.some((t) => t.id === practiceTask))) {
+        next = { ...next, completedTasks: { ...next.completedTasks, [practiceTask]: now } };
+      }
+      next = markActive(next);
+      next = withActivity(next, 'practical', `${passed ? 'Passed' : 'Attempted'} “${challenge.title}” (${challenge.difficulty}, ${grade.passed}/${grade.total})${after > before ? ` — ${skillName} ${before}% → ${after}%` : ''}`);
+      await commit(nextCareer === career ? { progress: next } : { career: nextCareer, progress: next });
+      if (nextCareer !== career) await recordAnalysis(nextCareer, 'practical');
+      return entry;
+    },
+    [commit, recordAnalysis],
+  );
+
   /** Track a project; completing one is evidence that raises its main skills. */
   const setProjectStatus = useCallback(
     async (projectId, status) => {
@@ -379,6 +482,33 @@ export const WorkspaceProvider = ({ children }) => {
       if (practiced[questionId]) delete practiced[questionId];
       else practiced[questionId] = new Date().toISOString();
       return commit({ progress: { ...progress, interview: { ...progress.interview, practiced } } });
+    },
+    [commit],
+  );
+
+  /** Save a finished mock interview; answered questions count as practised. */
+  const saveMockInterview = useCallback(
+    (session) => {
+      const { progress } = stateRef.current;
+      const now = new Date().toISOString();
+      const practiced = { ...progress.interview.practiced };
+      const answered = session.questions.filter((q) => q.answer?.trim());
+      for (const q of answered) if (!practiced[q.id]) practiced[q.id] = now;
+      const mocks = [session, ...(progress.interview.mocks || []).filter((m) => m.id !== session.id)].slice(0, MAX_MOCK_SESSIONS);
+      let next = markActive({ ...progress, interview: { ...progress.interview, practiced, mocks } });
+      next = withActivity(next, 'interview', `Mock interview: answered ${answered.length} of ${session.questions.length} questions`);
+      return commit({ progress: next });
+    },
+    [commit],
+  );
+
+  const saveMockFeedback = useCallback(
+    (sessionId, questionId, ai) => {
+      const { progress } = stateRef.current;
+      const mocks = (progress.interview.mocks || []).map((m) =>
+        m.id === sessionId ? { ...m, questions: m.questions.map((q) => (q.id === questionId ? { ...q, ai } : q)) } : m,
+      );
+      return commit({ progress: { ...progress, interview: { ...progress.interview, mocks } } });
     },
     [commit],
   );
@@ -574,11 +704,45 @@ export const WorkspaceProvider = ({ children }) => {
     setAll({ ...initialState, status: 'ready' });
   }, [uid, setAll]);
 
+  /** Everything the user owns, as a JSON-serialisable backup. */
+  const exportWorkspace = useCallback(() => {
+    const { career, analyses, roadmap, progress, insights, tracker, schedule } = stateRef.current;
+    return { app: 'skillgap', version: BACKUP_VERSION, exportedAt: new Date().toISOString(), data: { career, analyses, roadmap, progress, insights, tracker, schedule } };
+  }, []);
+
+  /** Replace the workspace with a backup made by exportWorkspace. */
+  const importWorkspace = useCallback(
+    async (backup) => {
+      if (!backup || backup.app !== 'skillgap' || typeof backup.data !== 'object' || !backup.data) {
+        throw new Error('This file isn’t a SkillGap backup.');
+      }
+      if (backup.version > BACKUP_VERSION) throw new Error('This backup was made by a newer version of SkillGap.');
+      const d = backup.data;
+      if (d.career != null && (typeof d.career !== 'object' || !Array.isArray(d.career.skills || []))) throw new Error('The backup’s career profile is invalid.');
+      const next = {
+        career: d.career || null,
+        roadmap: d.roadmap && Array.isArray(d.roadmap.phases) ? d.roadmap : null,
+        progress: normalizeProgress(d.progress),
+        insights: normalizeInsights(d.insights),
+        tracker: normalizeTracker(d.tracker),
+        schedule: normalizeSchedule(d.schedule),
+      };
+      const analyses = Array.isArray(d.analyses) ? d.analyses.filter((a) => a && typeof a.readiness_score === 'number') : [];
+      setAll({ ...stateRef.current, ...next, analyses: analyses.slice(0, 30) });
+      const saved = await persist(PERSISTED);
+      if (!saved) throw new Error('The backup was loaded but couldn’t be saved. Try again.');
+      if (analyses.length) await repo.importAnalyses(uid, analyses);
+      return { applications: next.tracker.applications.length, analyses: analyses.length };
+    },
+    [uid, persist, setAll],
+  );
+
   // ── Derived state ────────────────────────────────────────────────────────
 
-  const { career, roadmap, progress, analyses, insights } = state;
+  const { career, roadmap, progress, analyses, insights, tracker, schedule } = state;
   const latestAssessments = useMemo(() => latestBySkill(progress.assessments), [progress.assessments]);
   const signals = useMemo(() => ({ assessments: latestAssessments }), [latestAssessments]);
+  const evidence = useMemo(() => buildEvidence({ career, progress, latestAssessments }), [career, progress, latestAssessments]);
   const role = useMemo(() => resolveRole(career), [career]);
   const analysis = useMemo(
     () => (role && (career.skills?.length || career.onboardedAt) ? analyzeRole(role, career.skills || []) : null),
@@ -629,8 +793,11 @@ export const WorkspaceProvider = ({ children }) => {
       stats,
       progress,
       insights,
+      tracker,
+      schedule,
       signals,
       latestAssessments,
+      evidence,
       isOnboarded: Boolean(analysis),
       actions: {
         completeOnboarding,
@@ -639,12 +806,19 @@ export const WorkspaceProvider = ({ children }) => {
         setTargetRole,
         importSkills,
         saveInsight,
+        updateTracker,
+        updateSchedule,
+        exportWorkspace,
+        importWorkspace,
         saveJob,
         removeJob,
         targetJob,
         submitAssessment,
+        submitVerification,
         setProjectStatus,
         toggleInterviewPracticed,
+        saveMockInterview,
+        saveMockFeedback,
         toggleWeekCheck,
         updatePreferences,
         toggleRoadmapSkill,
@@ -660,9 +834,10 @@ export const WorkspaceProvider = ({ children }) => {
     }),
     [
       state.status, state.error, load, syncStatus, career, role, analysis, analyses, readinessHistory, readinessDelta,
-      matches, roadmap, roadmapState, stats, progress, insights, signals, latestAssessments, completeOnboarding, updateSkills,
-      setSkillLevel, setTargetRole, importSkills, saveInsight, saveJob, removeJob, targetJob, submitAssessment,
-      setProjectStatus, toggleInterviewPracticed, toggleWeekCheck, updatePreferences, toggleRoadmapSkill, generateRoadmap,
+      matches, roadmap, roadmapState, stats, progress, insights, tracker, schedule, signals, latestAssessments, evidence, completeOnboarding,
+      updateSkills, setSkillLevel, setTargetRole, importSkills, saveInsight, updateTracker, updateSchedule, exportWorkspace,
+      importWorkspace, saveJob, removeJob, targetJob, submitAssessment,
+      submitVerification, setProjectStatus, toggleInterviewPracticed, saveMockInterview, saveMockFeedback, toggleWeekCheck, updatePreferences, toggleRoadmapSkill, generateRoadmap,
       toggleTask, completePhase, logHours, removeHoursEntry, setRoadmapStatus, markActivitySeen, resetWorkspace,
     ],
   );

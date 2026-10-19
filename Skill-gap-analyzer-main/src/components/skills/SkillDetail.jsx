@@ -10,6 +10,9 @@ import { projectForSkill } from '../../data/projects';
 import { hasAssessment } from '../../data/assessments/index';
 import { genericProjectFor } from '../../lib/projects';
 import { isIncludedInRoadmap, levelName } from '../../lib/analysis';
+import { evidenceFor, EVIDENCE_LEVELS } from '../../lib/evidence';
+import { useWorkspace } from '../../context/WorkspaceContext';
+import EvidenceBadge from './EvidenceBadge';
 
 const Section = ({ title, children }) => (
   <section className="border-t border-line px-5 py-5 sm:px-6">
@@ -23,7 +26,9 @@ const Section = ({ title, children }) => (
  * resources, a project that proves it and its assessment status.
  */
 const SkillDetail = ({ item, analysis, roleId, overrides, latestAssessment, onClose, onCheckIn, onToggleRoadmap }) => {
+  const { evidence } = useWorkspace();
   if (!item) return null;
+  const proof = evidenceFor(evidence, item.skillId);
   const skill = getSkill(item.skillId, item.skillName);
   const levels = analysis.levels;
   const project = projectForSkill(item.skillId, roleId) || genericProjectFor(item.skillId, roleId);
@@ -75,6 +80,28 @@ const SkillDetail = ({ item, analysis, roleId, overrides, latestAssessment, onCl
           <ProgressBar value={item.current} marker={item.required} className="col-span-3" tone={item.gap ? 'accent' : 'success'} label={`${item.skillName} level`} />
           {item.inferred && <p className="col-span-3 text-xs text-muted">Inferred from {item.inferredFrom}. Run a check-in to set it precisely.</p>}
         </div>
+
+        <Section title="Evidence">
+          <div className="flex flex-wrap items-center gap-2">
+            <EvidenceBadge level={proof.level} />
+            <span className="text-xs text-muted">{proof.verified ? 'Verified by a graded result.' : 'Not verified yet: pass the assessment or a practical challenge to verify it.'}</span>
+          </div>
+          {proof.items.length > 0 ? (
+            <ul className="mt-3 space-y-1.5 text-sm">
+              {proof.items.map((e, i) => (
+                <li key={i} className="flex items-start justify-between gap-3">
+                  <span className="min-w-0">
+                    <span className="text-ink">{e.label}</span>
+                    {e.detail && <span className="text-muted"> · {e.detail}</span>}
+                  </span>
+                  {e.at && <span className="shrink-0 text-xs text-muted">{new Date(e.at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</span>}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-2 text-sm text-muted">{EVIDENCE_LEVELS.none.label} yet for this skill.</p>
+          )}
+        </Section>
 
         <Section title="Why it matters">
           <p className="text-sm leading-relaxed text-ink">{skill?.why}</p>

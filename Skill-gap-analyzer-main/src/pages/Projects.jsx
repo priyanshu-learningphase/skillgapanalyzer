@@ -197,7 +197,7 @@ const Projects = () => {
     [analysis, role, career, statuses],
   );
 
-  if (!analysis) return <NoAnalysisState title="No projects yet" description="Analyze your skills to get projects that close your exact gaps." />;
+  if (!analysis) return <NoAnalysisState page="Projects" title="No projects yet" description="Analyze your skills to get projects that close your exact gaps." />;
 
   const gapIds = new Set(analysis.gaps.map((g) => g.skillId));
   const tracked = Object.keys(statuses)

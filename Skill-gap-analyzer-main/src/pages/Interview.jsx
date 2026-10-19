@@ -3,20 +3,63 @@
  * and your own projects. Mark questions as practised to track readiness.
  */
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Check, ChevronDown, ExternalLink, AlertTriangle, Code2, Layers, MessagesSquare, FolderGit2, BookOpenCheck } from 'lucide-react';
+import { Check, ChevronDown, ChevronRight, ExternalLink, AlertTriangle, Code2, Layers, MessagesSquare, FolderGit2, BookOpenCheck, Timer } from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
 import Card, { CardHeader, CardBody } from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
+import Button from '../components/ui/Button';
 import ProgressBar from '../components/ui/ProgressBar';
 import Segmented from '../components/ui/Segmented';
 import { EmptyState } from '../components/ui/States';
 import { NoAnalysisState } from '../components/common/WorkspaceEmpty';
 import { useWorkspace } from '../context/WorkspaceContext';
-import { buildInterviewPlan } from '../lib/interview';
-import { PROJECT_MAP } from '../data/projects';
+import { useInterviewPlan } from '../hooks/useInterviewPlan';
+import { formatDuration, summarizeMock } from '../lib/mockInterview';
 import { cx } from '../lib/cx';
+
+const fmtDate = (iso) => new Date(iso).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+
+const MockHistory = ({ sessions }) => (
+  <Card className="mt-4">
+    <CardHeader
+      title="Mock interviews"
+      icon={Timer}
+      description="Your recent sessions. Open one to review your answers and feedback."
+      action={
+        <Button size="sm" variant="secondary" to="/interview/mock">
+          Start another
+        </Button>
+      }
+    />
+    <CardBody className="pt-2">
+      <ul className="divide-y divide-line">
+        {sessions.slice(0, 3).map((s) => {
+          const sum = summarizeMock(s);
+          return (
+            <li key={s.id}>
+              <Link to={`/interview/mock/${s.id}`} className="-mx-2 flex items-center gap-3 rounded-md px-2 py-2.5 text-sm hover:bg-slate-50">
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-medium text-ink">{fmtDate(s.at)}</span>
+                  <span className="block truncate text-xs text-muted">
+                    {sum.answered} of {sum.asked} answered · {formatDuration(sum.seconds)}
+                  </span>
+                </span>
+                {sum.pointsTotal > 0 && (
+                  <span className="tabular shrink-0 text-xs text-muted">
+                    {sum.pointsCovered}/{sum.pointsTotal} key points
+                  </span>
+                )}
+                <ChevronRight className="h-4 w-4 shrink-0 text-muted-light" aria-hidden />
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </CardBody>
+  </Card>
+);
 
 const PracticeToggle = ({ done, onToggle, label }) => (
   <button
@@ -64,24 +107,11 @@ const QuestionRow = ({ item, done, onToggle, meta }) => {
 };
 
 const Interview = () => {
-  const { role, analysis, latestAssessments, progress, insights, actions } = useWorkspace();
+  const { role, progress, actions } = useWorkspace();
   const [section, setSection] = useState('technical');
+  const plan = useInterviewPlan();
 
-  const projectTitles = useMemo(() => {
-    const completed = Object.entries(progress.projects || {})
-      .filter(([, p]) => p.status === 'completed')
-      .map(([id, p]) => PROJECT_MAP[id]?.title || p.title);
-    const resume = insights.resume?.parsed?.projects?.map((p) => p.title) || [];
-    const github = insights.github?.repos?.slice(0, 2).map((r) => r.name) || [];
-    return [...completed, ...resume, ...github];
-  }, [progress.projects, insights]);
-
-  const plan = useMemo(
-    () => (role && analysis ? buildInterviewPlan({ role, analysis, company: role.company, latestAssessments, projectTitles }) : null),
-    [role, analysis, latestAssessments, projectTitles],
-  );
-
-  if (!plan) return <NoAnalysisState title="No interview plan yet" description="Pick a target role and add your skills to get questions tailored to it." />;
+  if (!plan) return <NoAnalysisState page="Interview Prep" title="No interview plan yet" description="Pick a target role and add your skills to get questions tailored to it." />;
 
   const practiced = progress.interview?.practiced || {};
   const isDone = (id) => Boolean(practiced[id]);
@@ -102,6 +132,11 @@ const Interview = () => {
       <PageHeader
         title="Interview Prep"
         description={`Tailored to ${role.name}${role.company ? ` at ${role.company.name}` : ''}, your gaps, your results and your projects.`}
+        actions={
+          <Button to="/interview/mock" icon={Timer}>
+            Start mock interview
+          </Button>
+        }
       />
 
       <div className="grid gap-4 lg:grid-cols-[1fr_20rem]">
@@ -145,6 +180,8 @@ const Interview = () => {
           </CardBody>
         </Card>
       </div>
+
+      {progress.interview?.mocks?.length > 0 && <MockHistory sessions={progress.interview.mocks} />}
 
       <div className="mt-4 overflow-x-auto">
         <Segmented

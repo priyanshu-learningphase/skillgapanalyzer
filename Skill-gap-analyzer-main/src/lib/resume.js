@@ -23,25 +23,25 @@ const SECTION_PATTERNS = [
   ['leadership', /^(leadership|extra-?curricular( activities)?|activities|volunteering|positions of responsibility)$/],
 ];
 
-const BULLET = /^[•\-–*▪◦●○■□➢►✓]\s*|^\d+[.)]\s+/;
+export const BULLET = /^[•\-–*▪◦●○■□➢►✓]\s*|^\d+[.)]\s+/;
 const MONTH = '(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\\.?';
 const DATE = `(?:${MONTH}\\s*'?\\d{2,4}|\\d{1,2}/\\d{2,4}|(?:19|20)\\d{2})`;
-const DATE_RANGE = new RegExp(`${DATE}\\s*(?:-|–|—|to)\\s*(?:${DATE}|present|current|now|ongoing)`, 'i');
+export const DATE_RANGE = new RegExp(`${DATE}\\s*(?:-|–|—|to)\\s*(?:${DATE}|present|current|now|ongoing)`, 'i');
 const DEGREE = /\b(b\.?\s?tech|b\.?\s?e\b|b\.?\s?sc|bca|bachelor[’']?s?|b\.?s\.?\b|m\.?\s?tech|m\.?\s?sc|mca|master[’']?s?|m\.?s\.?\b|mba|ph\.?d|diploma|high school|higher secondary|senior secondary|class (x|xii|10|12))\b/i;
 const INSTITUTION = /\b(university|college|institute|school|academy|iit|nit|iiit|bits)\b/i;
 const GPA = /\b(c?gpa|cpi|percentage)\b[:\s]*([\d.]+%?)(?:\s*\/\s*([\d.]+))?/i;
-const WEAK_START = /^(worked on|responsible for|helped|assisted|involved in|participated in|was part of|did|handled|tasked with)\b/i;
-const QUANTIFIED = /(\d+(\.\d+)?\s*(%|x|k|m|\+)|\$\s?\d|\b\d{2,}\b|\bby \d)/i;
+export const WEAK_START = /^(worked on|responsible for|helped|assisted|involved in|participated in|was part of|did|handled|tasked with)\b/i;
+export const QUANTIFIED = /(\d+(\.\d+)?\s*(%|x|k|m|\+)|\$\s?\d|\b\d{2,}\b|\bby \d)/i;
 const CERT_PATTERN = /(aws certified[^,;\n]*|az-\d{3}[^,;\n]*|azure (fundamentals|administrator|developer|solutions architect)[^,;\n]*|google (cloud )?(certified|associate|professional)[^,;\n]*|comptia (security|network|a)\+?|\bckad\b|\bcka\b|\bccna\b|\boscp\b|\bceh\b|\bpmp\b|tensorflow developer certificate|meta (front-end|back-end) developer[^,;\n]*|ibm data science[^,;\n]*|google data analytics[^,;\n]*)/gi;
 
-const normalizeText = (raw) =>
+export const normalizeText = (raw) =>
   raw
     .replace(/\r/g, '\n')
     .replace(/[ \t ]+/g, ' ')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 
-const headingKey = (line) => {
+export const headingKey = (line) => {
   const cleaned = line
     .replace(/[:|_•\-–—]+$/g, '')
     .replace(/^[^A-Za-z]+/, '')
@@ -52,7 +52,7 @@ const headingKey = (line) => {
   return null;
 };
 
-const stripBullet = (line) => line.replace(BULLET, '').trim();
+export const stripBullet = (line) => line.replace(BULLET, '').trim();
 
 const splitProjects = (lines) => {
   const projects = [];

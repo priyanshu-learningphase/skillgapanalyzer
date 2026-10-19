@@ -5,12 +5,25 @@ import { cx } from '../../lib/cx';
 import Button from './Button';
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])';
+const FIELDS = 'input:not([disabled]):not([type="hidden"]):not([type="file"]), select:not([disabled]), textarea:not([disabled])';
+
+/** Focus the first candidate that can actually take focus (hidden inputs can't). */
+const focusInitial = (panel, preferField) => {
+  // On touch screens a focused field opens the keyboard over the dialog, so only jump straight to it with a mouse.
+  const fieldFirst = preferField && window.matchMedia?.('(pointer: fine)').matches;
+  const candidates = [panel.querySelector('[data-autofocus]'), ...(fieldFirst ? panel.querySelectorAll(FIELDS) : []), ...panel.querySelectorAll(FOCUSABLE), panel];
+  for (const el of candidates) {
+    if (!el) continue;
+    el.focus();
+    if (document.activeElement === el) return;
+  }
+};
 
 // Open overlays, innermost last. Only the top one responds to the keyboard.
 const overlayStack = [];
 
 /** Escape to close, focus trap, scroll lock and focus restore for overlays. */
-const useOverlay = (open, onCloseProp) => {
+const useOverlay = (open, onCloseProp, { preferField = false } = {}) => {
   const panelRef = useRef(null);
   // Keep the latest callback without re-running the effect (which would steal focus).
   const onCloseRef = useRef(onCloseProp);
@@ -23,10 +36,7 @@ const useOverlay = (open, onCloseProp) => {
     const previouslyFocused = document.activeElement;
     const { overflow } = document.body.style;
     document.body.style.overflow = 'hidden';
-    const frame = requestAnimationFrame(() => {
-      const target = panelRef.current?.querySelector('[data-autofocus]') || panelRef.current?.querySelector(FOCUSABLE);
-      (target || panelRef.current)?.focus();
-    });
+    const frame = requestAnimationFrame(() => panelRef.current && focusInitial(panelRef.current, preferField));
     const onKey = (event) => {
       if (overlayStack[overlayStack.length - 1] !== token) return;
       if (event.key === 'Escape') {
@@ -55,12 +65,12 @@ const useOverlay = (open, onCloseProp) => {
       document.removeEventListener('keydown', onKey);
       previouslyFocused?.focus?.();
     };
-  }, [open]);
+  }, [open, preferField]);
   return panelRef;
 };
 
 export const Modal = ({ open, onClose, title, description, children, footer, size = 'md' }) => {
-  const panelRef = useOverlay(open, onClose);
+  const panelRef = useOverlay(open, onClose, { preferField: true });
   if (!open) return null;
   const widths = { sm: 'max-w-sm', md: 'max-w-lg', lg: 'max-w-2xl' };
   return createPortal(

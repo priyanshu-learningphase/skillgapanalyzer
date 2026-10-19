@@ -27,7 +27,7 @@ React 18 · Vite · Tailwind CSS · Firebase (optional) · Gemini (optional, ser
 | **Study calendar** | Turns the roadmap into dated study sessions from your weekly availability. Exams, assignments, interviews and busy days reduce or block study time around them; tracked interviews are added automatically. Pin sessions, catch up on missed ones with one click, and export to Google Calendar, Outlook or Apple Calendar (.ics). |
 | **Market insights** | Live job-ad data for your role, city and experience level from Adzuna: how many ads, which skills they ask for (and which of those you're missing), and salary ranges from ads that state one. Every number shows its sample size and limitations. Without API keys the page says it isn't configured; it never shows made-up data. |
 | **Portfolio** | A shareable career portfolio with per-section privacy toggles (readiness, skills with evidence, assessments and lab results, projects, GitHub, milestones, certificates and contact links) and a downloadable readiness report PDF. Publishing a public link at `/p/your-name` needs Firebase. |
-| **Interview Prep** | Technical, coding, system design, behavioural, company-specific and project-based questions, with your focus areas first. Practice progress is saved. |
+| **Interview Prep** | Technical, coding, system design, behavioural, company-specific and project-based questions, with your focus areas first. Practice progress is saved. **Mock interviews** time you through a mix of these questions, then review each answer: which key points it mentions, STAR structure for story questions, length, concrete examples and hedging. These checks run in the browser and are labelled as prompts, not a grade. With `GEMINI_API_KEY` set, each answer can also get AI feedback through `/api/interview/feedback`; the key stays on the server. |
 | **GitHub Analyzer** | Scores a public GitHub profile out of 100 (portfolio size, recent activity, documentation, project diversity, role relevance, testing and CI), shows strengths and what needs work, and recommends projects. |
 | **Adaptive roadmaps** | Assessment scores under 60% bring fundamentals back; scores over 85% skip beginner content. Completing skills or projects, or changing your goal, triggers a re-plan. Completed work is always kept. |
 | **Campus analytics** (placement cell) | For admins: students, average readiness, job-ready count, recent activity and who needs attention; the readiness spread, a weekly trend, the most common skill gaps, and readiness by role or target company. A searchable, sortable student table with filters and CSV export. Built only from profiles and analysis snapshots; roadmaps, progress and resume, job and GitHub results stay private to each student. |
@@ -143,12 +143,13 @@ src/
                  simulator.js, weekPlan.js, dependencyGraph.js, interview.js, github.js, campus.js,
                  applications.js, resumeDraft.js, ats.js, resumeExport.js, evidence.js, readiness.js,
                  labGrading.js, jsSandbox.js, sqlRunner.js, schedule.js, ics.js, market.js,
-                 portfolio.js, reportPdf.js
+                 portfolio.js, reportPdf.js, redirect.js, mockInterview.js,
+                 interviewFeedbackSchema.js (AI contract)
   services/      workspaceRepository.js (Firestore | localStorage), roadmapService.js, aiService.js,
                  githubService.js (public REST API), pdfText.js (pdf.js + DOCX, lazy-loaded),
                  portfolioService.js, firestoreService.js
   workers/       sqlWorker.js (sql.js)
-  hooks/         useApplications, useStudySchedule, useStartPath
+  hooks/         useApplications, useStudySchedule, useStartPath, useInterviewPlan
   context/       AuthContext, WorkspaceContext (state + actions), ToastContext
   components/    ui/ (design system), layout/, analysis/, skills/, careers/, dashboard/, roadmap/,
                  progress/, onboarding/, landing/, auth/, admin/, applications/, resume/, lab/,
@@ -156,11 +157,11 @@ src/
   pages/         Dashboard, MySkills, SkillGap, Roadmap, Projects, Assessments, AssessmentRunner, Jobs,
                  Simulator, Careers, Interview, GitHubAnalyzer, Progress, Resources, Settings (Profile),
                  Applications, ApplicationDetail, ResumeTailor, VerificationLab, ChallengeRunner,
-                 StudyCalendar, MarketInsights, Portfolio, PublicPortfolio, ...
-server/          api.js (routes), gemini.js, prompt.js, execute.js (Judge0), market.js (Adzuna),
+                 StudyCalendar, MarketInsights, Portfolio, PublicPortfolio, MockInterview, ...
+server/          api.js (routes), gemini.js, prompt.js, interviewPrompt.js, execute.js (Judge0), market.js (Adzuna),
                  index.js (production server), env.js
 tests/           engine, platform, campus, api, applications, resumeTailor, readiness, lab,
-                 schedule, market, portfolio
+                 schedule, market, portfolio, redirect, mockInterview
 ```
 
 - **Business logic is pure and UI-free** (`src/lib`) and shared by the browser and the server.

@@ -29,6 +29,7 @@ import { emptyTracker, normalizeTracker } from '../lib/applications';
 import { emptySchedule, normalizeSchedule } from '../lib/schedule';
 import { buildEvidence } from '../lib/evidence';
 import { levelAfterPractical } from '../lib/labGrading';
+import { MAX_MOCK_SESSIONS } from '../lib/mockInterview';
 
 const WorkspaceContext = createContext(null);
 
@@ -485,6 +486,33 @@ export const WorkspaceProvider = ({ children }) => {
     [commit],
   );
 
+  /** Save a finished mock interview; answered questions count as practised. */
+  const saveMockInterview = useCallback(
+    (session) => {
+      const { progress } = stateRef.current;
+      const now = new Date().toISOString();
+      const practiced = { ...progress.interview.practiced };
+      const answered = session.questions.filter((q) => q.answer?.trim());
+      for (const q of answered) if (!practiced[q.id]) practiced[q.id] = now;
+      const mocks = [session, ...(progress.interview.mocks || []).filter((m) => m.id !== session.id)].slice(0, MAX_MOCK_SESSIONS);
+      let next = markActive({ ...progress, interview: { ...progress.interview, practiced, mocks } });
+      next = withActivity(next, 'interview', `Mock interview: answered ${answered.length} of ${session.questions.length} questions`);
+      return commit({ progress: next });
+    },
+    [commit],
+  );
+
+  const saveMockFeedback = useCallback(
+    (sessionId, questionId, ai) => {
+      const { progress } = stateRef.current;
+      const mocks = (progress.interview.mocks || []).map((m) =>
+        m.id === sessionId ? { ...m, questions: m.questions.map((q) => (q.id === questionId ? { ...q, ai } : q)) } : m,
+      );
+      return commit({ progress: { ...progress, interview: { ...progress.interview, mocks } } });
+    },
+    [commit],
+  );
+
   const toggleWeekCheck = useCallback(
     (itemId) => {
       const { progress } = stateRef.current;
@@ -789,6 +817,8 @@ export const WorkspaceProvider = ({ children }) => {
         submitVerification,
         setProjectStatus,
         toggleInterviewPracticed,
+        saveMockInterview,
+        saveMockFeedback,
         toggleWeekCheck,
         updatePreferences,
         toggleRoadmapSkill,
@@ -807,7 +837,7 @@ export const WorkspaceProvider = ({ children }) => {
       matches, roadmap, roadmapState, stats, progress, insights, tracker, schedule, signals, latestAssessments, evidence, completeOnboarding,
       updateSkills, setSkillLevel, setTargetRole, importSkills, saveInsight, updateTracker, updateSchedule, exportWorkspace,
       importWorkspace, saveJob, removeJob, targetJob, submitAssessment,
-      submitVerification, setProjectStatus, toggleInterviewPracticed, toggleWeekCheck, updatePreferences, toggleRoadmapSkill, generateRoadmap,
+      submitVerification, setProjectStatus, toggleInterviewPracticed, saveMockInterview, saveMockFeedback, toggleWeekCheck, updatePreferences, toggleRoadmapSkill, generateRoadmap,
       toggleTask, completePhase, logHours, removeHoursEntry, setRoadmapStatus, markActivitySeen, resetWorkspace,
     ],
   );

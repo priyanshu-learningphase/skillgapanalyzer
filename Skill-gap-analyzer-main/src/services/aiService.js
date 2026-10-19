@@ -34,6 +34,33 @@ const MESSAGES = {
   ai_invalid_response: 'The AI returned a roadmap that failed validation.',
 };
 
+const FEEDBACK_MESSAGES = {
+  ai_unavailable: 'AI feedback is not configured on the server.',
+  ai_timeout: 'The AI took too long to respond. Try again.',
+  ai_rate_limited: 'The AI provider is busy right now. Try again shortly.',
+  rate_limited: 'Too many feedback requests — try again in a few minutes.',
+  ai_invalid_response: 'The AI reply didn’t pass our checks. Try again.',
+};
+
+/** AI coaching on one mock-interview answer, via our server. */
+export const getAnswerFeedback = async (request, { signal } = {}) => {
+  let response;
+  try {
+    response = await fetch('/api/interview/feedback', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', accept: 'application/json' },
+      body: JSON.stringify(request),
+      signal,
+    });
+  } catch (error) {
+    if (error.name === 'AbortError') throw error;
+    throw new AiRequestError('Network error — check your connection.', 'network');
+  }
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new AiRequestError(FEEDBACK_MESSAGES[data.error] || data.message || 'The AI request failed.', data.error, response.status);
+  return data;
+};
+
 export const enrichRoadmap = async (request, { signal } = {}) => {
   let response;
   try {

@@ -3,6 +3,7 @@
  *
  *   GET  /api/health          → { ok, ai: { enabled, model } }
  *   POST /api/roadmap/enrich  → { roadmap: [...] } validated against the plan
+ *   POST /api/interview/feedback → { feedback } on one mock-interview answer
  *   POST /api/execute         → run Python on a configured Judge0 service
  *   GET  /api/market          → skill demand from real job ads (Adzuna), aggregated
  *
@@ -13,6 +14,7 @@
 import { aiConfigFrom } from './env.js';
 import { AiProviderError, generateJson } from './gemini.js';
 import { ROADMAP_SYSTEM_PROMPT } from './prompt.js';
+import { INTERVIEW_FEEDBACK_SYSTEM_PROMPT } from './interviewPrompt.js';
 import { ExecutionError, executeCode, executionConfigFrom, validateExecutionRequest } from './execute.js';
 import { MarketError, createMarketFetcher, isMarketConfigured, marketConfigFrom } from './market.js';
 import { aggregateJobAds, EXPERIENCE_LEVELS, MARKET_LIMITATIONS, MARKET_LOCATION_MAP } from '../src/lib/market.js';
@@ -22,11 +24,13 @@ import {
   validateEnrichment,
   validateEnrichmentRequest,
 } from '../src/lib/roadmapSchema.js';
+import { FEEDBACK_RESPONSE_SCHEMA, feedbackPayload, validateFeedback, validateFeedbackRequest } from '../src/lib/interviewFeedbackSchema.js';
 
 const MAX_BODY_BYTES = 64 * 1024;
 const RATE_LIMIT = { windowMs: 10 * 60 * 1000, max: 12 };
 const EXECUTE_LIMIT = { windowMs: 10 * 60 * 1000, max: 40 };
 const MARKET_LIMIT = { windowMs: 10 * 60 * 1000, max: 30 };
+const FEEDBACK_LIMIT = { windowMs: 10 * 60 * 1000, max: 30 };
 
 const sendJson = (res, status, body) => {
   res.statusCode = status;
@@ -81,6 +85,7 @@ export const createApiMiddleware = (env = process.env) => {
   const market = marketConfigFrom(env);
   const fetchMarket = createMarketFetcher(market);
   const allowMarket = createRateLimiter(MARKET_LIMIT);
+  const allowFeedback = createRateLimiter(FEEDBACK_LIMIT);
   const clientIpOf = (req) => req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress || 'unknown';
 
   return async (req, res, next) => {
@@ -131,6 +136,29 @@ export const createApiMiddleware = (env = process.env) => {
           model: ai.model,
           roadmap: Object.entries(result.phases).map(([phaseId, { title, ...phase }]) => ({ phaseId, phase: title, ...phase })),
         });
+      }
+
+      if (url.pathname === '/api/interview/feedback') {
+        if (req.method !== 'POST') return sendJson(res, 405, { error: 'method_not_allowed' });
+        if (!ai.apiKey) return sendJson(res, 503, { error: 'ai_unavailable', message: 'AI feedback is not configured on the server.' });
+        if (!allowFeedback(clientIpOf(req))) return sendJson(res, 429, { error: 'rate_limited', message: 'Too many feedback requests. Try again in a few minutes.' });
+        const body = await readJsonBody(req);
+        const invalid = validateFeedbackRequest(body);
+        if (invalid) return sendJson(res, 400, { error: 'invalid_request', message: invalid });
+        const raw = await generateJson({
+          apiKey: ai.apiKey,
+          model: ai.model,
+          timeoutMs: ai.timeoutMs,
+          systemPrompt: INTERVIEW_FEEDBACK_SYSTEM_PROMPT,
+          payload: feedbackPayload(body),
+          schema: FEEDBACK_RESPONSE_SCHEMA,
+        });
+        const result = validateFeedback(raw);
+        if (!result.ok) {
+          console.warn(`[skillgap] Rejected AI feedback: ${result.error}`);
+          return sendJson(res, 502, { error: 'ai_invalid_response', message: 'The AI response did not pass validation.' });
+        }
+        return sendJson(res, 200, { model: ai.model, feedback: result.feedback });
       }
 
       if (url.pathname === '/api/execute') {

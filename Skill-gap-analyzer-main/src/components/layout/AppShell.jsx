@@ -12,7 +12,7 @@ import { ErrorState } from '../ui/States';
 import { Skeleton } from '../ui/Spinner';
 import ErrorBoundary from '../common/ErrorBoundary';
 
-/** Browser tab titles by first path segment. */
+/** Browser tab titles by first path segment (or first two, where a sub-page has its own name). */
 const PAGE_TITLES = {
   dashboard: 'Dashboard',
   skills: 'My Skills',
@@ -28,6 +28,7 @@ const PAGE_TITLES = {
   market: 'Market Insights',
   portfolio: 'Portfolio',
   interview: 'Interview Prep',
+  'interview/mock': 'Mock Interview',
   github: 'GitHub Analyzer',
   progress: 'Progress',
   resources: 'Resources',
@@ -79,7 +80,8 @@ const AppShell = () => {
 
   // Name the browser tab after the current page.
   useEffect(() => {
-    const page = PAGE_TITLES[location.pathname.split('/')[1]];
+    const [, section, sub] = location.pathname.split('/');
+    const page = PAGE_TITLES[`${section}/${sub}`] || PAGE_TITLES[section];
     document.title = page ? `${page} · SkillGap` : 'SkillGap';
   }, [location.pathname]);
 

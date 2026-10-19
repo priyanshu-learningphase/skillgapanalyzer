@@ -198,3 +198,48 @@ test('market insights aggregate real provider ads and cache them', async () => {
   assert.equal(again.body.cached, true);
   assert.equal(again.body.sampleSize, 1);
 });
+
+const feedbackBody = () => ({
+  role: 'Frontend Developer',
+  kind: 'behavioral',
+  question: 'Describe a time you disagreed with a teammate.',
+  points: ['Listen first', 'Data over opinions'],
+  answer: 'In my final year project I disagreed with a teammate about the database. I listened to his reasons, then I built a small benchmark and we chose Postgres together.',
+});
+
+test('interview feedback returns 503 without AI and validates the request', async () => {
+  const off = await call(createApiMiddleware({}), { method: 'POST', url: '/api/interview/feedback', body: feedbackBody() });
+  assert.equal(off.status, 503);
+  assert.equal(off.body.error, 'ai_unavailable');
+
+  const short = await call(createApiMiddleware({ GEMINI_API_KEY: 'k' }), { method: 'POST', url: '/api/interview/feedback', body: { ...feedbackBody(), answer: 'Too short.' } });
+  assert.equal(short.status, 400);
+  assert.equal(short.body.error, 'invalid_request');
+
+  const wrongMethod = await call(createApiMiddleware({ GEMINI_API_KEY: 'k' }), { url: '/api/interview/feedback' });
+  assert.equal(wrongMethod.status, 405);
+});
+
+test('interview feedback sends only the needed fields and returns a cleaned reply', async () => {
+  let sent = null;
+  globalThis.fetch = async (url, init) => {
+    assert.ok(!String(url).includes('k-9'), 'key is sent as a header, not in the URL');
+    assert.equal(init.headers['x-goog-api-key'], 'k-9');
+    sent = JSON.parse(JSON.parse(init.body).contents[0].parts[0].text);
+    return geminiReply({ verdict: 'solid', summary: '**Clear** story.', strengths: ['You name your own action'], improvements: ['Add the result in numbers'], strongerOpening: '' });
+  };
+  const result = await call(createApiMiddleware({ GEMINI_API_KEY: 'k-9' }), { method: 'POST', url: '/api/interview/feedback', body: { ...feedbackBody(), userId: 'u1' } });
+  assert.equal(result.status, 200);
+  assert.deepEqual(Object.keys(sent), ['role', 'questionType', 'question', 'strongAnswerCovers', 'answer']);
+  assert.equal(sent.questionType, 'Behavioral');
+  assert.equal(result.body.feedback.summary, 'Clear story.');
+  assert.equal(result.body.feedback.strongerOpening, null);
+});
+
+test('interview feedback rejects malformed model output without leaking it', async () => {
+  globalThis.fetch = async () => geminiReply({ verdict: 'hired', summary: 'secret internal note', strengths: [], improvements: [] });
+  const result = await call(createApiMiddleware({ GEMINI_API_KEY: 'k' }), { method: 'POST', url: '/api/interview/feedback', body: feedbackBody() });
+  assert.equal(result.status, 502);
+  assert.equal(result.body.error, 'ai_invalid_response');
+  assert.ok(!JSON.stringify(result.body).includes('secret'));
+});

@@ -15,14 +15,14 @@ export const emptyProgress = () => ({
   assessments: [],
   verifications: [],
   projects: {},
-  interview: { practiced: {} },
+  interview: { practiced: {}, mocks: [] },
   weekChecks: {},
 });
 
 /** Accept partial/legacy documents and always return the full shape. */
 export const normalizeProgress = (raw) => {
   const base = { ...emptyProgress(), ...(raw || {}) };
-  base.interview = { practiced: {}, ...(base.interview || {}) };
+  base.interview = { practiced: {}, mocks: [], ...(base.interview || {}) };
   return base;
 };
 

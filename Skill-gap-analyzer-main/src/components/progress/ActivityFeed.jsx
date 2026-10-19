@@ -1,4 +1,4 @@
-import { CheckCircle2, Route, ScanSearch, Clock, Target, Flag, PauseCircle, RefreshCw, TrendingUp } from 'lucide-react';
+import { CheckCircle2, Route, ScanSearch, Clock, Target, Flag, PauseCircle, RefreshCw, TrendingUp, MessagesSquare } from 'lucide-react';
 import { relativeTime } from '../../lib/progress';
 
 const ICONS = {
@@ -11,6 +11,7 @@ const ICONS = {
   skills: TrendingUp,
   hours: Clock,
   target: Target,
+  interview: MessagesSquare,
 };
 
 const ActivityFeed = ({ items, limit = 8, empty = 'No activity yet.' }) => {

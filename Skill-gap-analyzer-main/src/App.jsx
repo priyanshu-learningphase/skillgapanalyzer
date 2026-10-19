@@ -36,6 +36,7 @@ const Portfolio = lazy(() => import('./pages/Portfolio'));
 const PublicPortfolio = lazy(() => import('./pages/PublicPortfolio'));
 const Simulator = lazy(() => import('./pages/Simulator'));
 const Interview = lazy(() => import('./pages/Interview'));
+const MockInterview = lazy(() => import('./pages/MockInterview'));
 const GitHubAnalyzer = lazy(() => import('./pages/GitHubAnalyzer'));
 const Progress = lazy(() => import('./pages/Progress'));
 const Resources = lazy(() => import('./pages/Resources'));
@@ -116,6 +117,8 @@ const App = () => (
         <Route path="/careers" element={page(<Careers />)} />
         <Route path="/careers/:roleId" element={page(<Careers />)} />
         <Route path="/interview" element={page(<Interview />)} />
+        <Route path="/interview/mock" element={page(<MockInterview />)} />
+        <Route path="/interview/mock/:sessionId" element={page(<MockInterview />)} />
         <Route path="/github" element={page(<GitHubAnalyzer />)} />
         <Route path="/progress" element={page(<Progress />)} />
         <Route path="/resources" element={page(<Resources />)} />
